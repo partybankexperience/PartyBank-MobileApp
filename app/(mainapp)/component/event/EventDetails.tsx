@@ -25,7 +25,7 @@ const EventDetails = () => {
           </View>
         </View>
         <View style={styles.statsContainer}>
-          <View style={styles.statItem}>
+          {/* <View style={styles.statItem}>
             <Image
               source={require("@/assets/images/revenue.png")}
               style={styles.statIcon}
@@ -34,7 +34,7 @@ const EventDetails = () => {
               Total Revenue{" "}
             </CustomText>
             <CustomText variant="h5">25</CustomText>
-          </View>
+          </View> */}
           <View style={styles.statItem}>
             <Image
               source={require("@/assets/images/revenue.png")}

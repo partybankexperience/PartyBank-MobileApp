@@ -1,6 +1,12 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { CameraView, useCameraPermissions } from "expo-camera";
-import { StyleSheet, View, TouchableOpacity, FlatList } from "react-native";
+import {
+  StyleSheet,
+  View,
+  TouchableOpacity,
+  FlatList,
+  Alert,
+} from "react-native";
 import { AntDesign, FontAwesome } from "@expo/vector-icons";
 import CustomText from "@/shared/text/CustomText";
 import Topbar from "@/shared/Topbar/topbar";
@@ -23,6 +29,17 @@ export default function TabOneScreen() {
   const [isScanning, setIsScanning] = useState(false);
   const cameraRef = useRef(null);
 
+  // Check camera permission status
+  useEffect(() => {
+    if (permission && !permission.granted && !permission.canAskAgain) {
+      Alert.alert(
+        "Camera Permission Required",
+        "Please enable camera permissions in your device settings to use the QR scanner.",
+        [{ text: "OK" }]
+      );
+    }
+  }, [permission]);
+
   const handleSelect = (event: string) => {
     setSelectedEvent(event);
     setIsOpen(false);
@@ -35,66 +52,117 @@ export default function TabOneScreen() {
   };
 
   const startScanning = async () => {
-    if (!permission?.granted) {
-      await requestPermission();
+    // Check if we already have permission
+    if (permission?.granted) {
+      setIsScanning(true);
+      setScannedData("");
+      return;
     }
-    setIsScanning(true);
-    setScannedData("");
+
+    // Request permission if not granted
+    try {
+      const permissionResponse = await requestPermission();
+
+      if (permissionResponse.granted) {
+        setIsScanning(true);
+        setScannedData("");
+      } else {
+        Alert.alert(
+          "Permission Denied",
+          "Camera permission is required to scan QR codes.",
+          [{ text: "OK" }]
+        );
+      }
+    } catch (error) {
+      console.error("Error requesting camera permission:", error);
+      Alert.alert("Error", "Failed to access camera. Please try again.", [
+        { text: "OK" },
+      ]);
+    }
   };
+
+  // Show loading while checking permissions
+  if (!permission) {
+    return (
+      <View style={styles.container}>
+        <Topbar>Ticket Scanning</Topbar>
+        <View style={styles.centerContent}>
+          <CustomText>Checking camera permissions...</CustomText>
+        </View>
+      </View>
+    );
+  }
+
+  // Show permission denied message if we can't ask again
+  if (!permission.granted && !permission.canAskAgain) {
+    return (
+      <View style={styles.container}>
+        <Topbar>Ticket Scanning</Topbar>
+        <View style={styles.centerContent}>
+          <CustomText style={styles.permissionText}>
+            Camera permission is required to scan QR codes. Please enable it in
+            your device settings.
+          </CustomText>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
       <Topbar>Ticket Scanning</Topbar>
-      <View style={{ paddingHorizontal: 16 }}>
+      <View style={{ paddingHorizontal: 16, flex: 1 }}>
         <CustomText style={styles.label}>Select Event</CustomText>
 
-        {/* Selected Dropdown */}
-        <TouchableOpacity
-          style={styles.dropdown}
-          onPress={() => setIsOpen(!isOpen)}
-          activeOpacity={0.7}
-        >
-          <CustomText style={styles.selectedText}>{selectedEvent}</CustomText>
-          <AntDesign name={isOpen ? "up" : "down"} size={20} color="#333" />
-        </TouchableOpacity>
+        {/* Dropdown Container */}
+        <View style={styles.dropdownContainer}>
+          <TouchableOpacity
+            style={styles.dropdown}
+            onPress={() => setIsOpen(!isOpen)}
+            activeOpacity={0.7}
+          >
+            <CustomText style={styles.selectedText}>{selectedEvent}</CustomText>
+            <AntDesign name={isOpen ? "up" : "down"} size={20} color="#333" />
+          </TouchableOpacity>
+
+          {/* Dropdown List - Positioned absolutely so it doesn't affect layout */}
+          {isOpen && (
+            <View style={styles.dropdownList}>
+              <FlatList
+                data={events}
+                keyExtractor={(item) => item}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.option}
+                    onPress={() => handleSelect(item)}
+                  >
+                    <CustomText style={styles.optionText}>{item}</CustomText>
+                  </TouchableOpacity>
+                )}
+              />
+            </View>
+          )}
+        </View>
 
         <View style={styles.scanContainer}>
-          {isScanning ? (
-            <View style={styles.cameraContainer}>
-              <CameraView
-                style={styles.camera}
-                ref={cameraRef}
-                onBarcodeScanned={scannedData ? undefined : handleScan}
-                barcodeScannerSettings={{
-                  barcodeTypes: ["qr"],
-                }}
-              />
-              <View style={styles.scanFrame}>
-                <View style={[styles.corner, styles.cornerTopLeft]} />
-                <View style={[styles.corner, styles.cornerTopRight]} />
-                <View style={[styles.corner, styles.cornerBottomLeft]} />
-                <View style={[styles.corner, styles.cornerBottomRight]} />
-              </View>
-
-              {/* Dropdown List - Positioned absolutely to overlay camera */}
-              {isOpen && (
-                <View style={styles.dropdownListOverlay}>
-                  <FlatList
-                    data={events}
-                    keyExtractor={(item) => item}
-                    renderItem={({ item }) => (
-                      <TouchableOpacity
-                        style={styles.option}
-                        onPress={() => handleSelect(item)}
-                      >
-                        <CustomText style={styles.optionText}>
-                          {item}
-                        </CustomText>
-                      </TouchableOpacity>
-                    )}
-                  />
+          {isScanning && permission.granted ? (
+            <View style={styles.cameraWrapper}>
+              <View style={styles.cameraContainer}>
+                <CameraView
+                  style={styles.camera}
+                  ref={cameraRef}
+                  onBarcodeScanned={scannedData ? undefined : handleScan}
+                  barcodeScannerSettings={{
+                    barcodeTypes: ["qr"],
+                  }}
+                />
+                <View style={styles.scanFrame}>
+                  <View style={[styles.corner, styles.cornerTopLeft]} />
+                  <View style={[styles.corner, styles.cornerTopRight]} />
+                  <View style={[styles.corner, styles.cornerBottomLeft]} />
+                  <View style={[styles.corner, styles.cornerBottomRight]} />
                 </View>
-              )}
+              </View>
             </View>
           ) : (
             <View style={styles.scanPlaceholder}>
@@ -106,13 +174,22 @@ export default function TabOneScreen() {
               <CustomText style={styles.placeholderText}>
                 {scannedData ? "Scan complete!" : "Ready to scan QR codes"}
               </CustomText>
+              {!permission.granted && (
+                <CustomText style={styles.permissionHint}>
+                  Camera permission required
+                </CustomText>
+              )}
             </View>
           )}
 
           {!isScanning ? (
             <TouchableOpacity
-              style={styles.actionButton}
+              style={[
+                styles.actionButton,
+                !permission.granted && styles.disabledButton,
+              ]}
               onPress={startScanning}
+              disabled={!permission.granted && !permission.canAskAgain}
             >
               <CustomText style={styles.actionButtonText}>
                 {scannedData ? "Scan Again" : "Start Scanning"}
@@ -139,6 +216,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.light.white,
   },
+  centerContent: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  dropdownContainer: {
+    zIndex: 1000,
+    marginBottom: 12,
+  },
   label: {
     fontSize: 16,
     fontWeight: "600",
@@ -154,25 +241,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 14,
     backgroundColor: Colors.light.grey100,
-    zIndex: 10, // Ensure dropdown button is above other elements
   },
   selectedText: {
     fontSize: 16,
     color: "#333",
   },
-  dropdownListOverlay: {
+  dropdownList: {
     position: "absolute",
-    top: 0, // Position at the top of the camera container
+    top: "100%",
     left: 0,
     right: 0,
     borderWidth: 1,
     borderColor: "#ccc",
     borderRadius: 8,
-    backgroundColor: Colors.light.grey100,
+    backgroundColor: Colors.light.white,
     maxHeight: 200,
     overflow: "hidden",
-    zIndex: 20, // Higher z-index to ensure it overlays the camera
-    elevation: 20, // For Android
+    marginTop: 4,
+    elevation: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    zIndex: 1001,
   },
   option: {
     paddingVertical: 14,
@@ -185,14 +276,18 @@ const styles = StyleSheet.create({
     color: "#333",
   },
   scanContainer: {
+    flex: 1,
     alignItems: "center",
     paddingBottom: 30,
-    marginTop: 12,
   },
-  cameraContainer: {
+  cameraWrapper: {
     width: "100%",
     height: 300,
     marginBottom: 25,
+  },
+  cameraContainer: {
+    width: "100%",
+    height: "100%",
     borderRadius: 10,
     overflow: "hidden",
     position: "relative",
@@ -207,8 +302,6 @@ const styles = StyleSheet.create({
     position: "absolute",
     width: 200,
     height: 200,
-    // borderWidth: 2,
-    // borderColor: Colors.light.primary,
     borderRadius: 10,
   },
   corner: {
@@ -262,6 +355,19 @@ const styles = StyleSheet.create({
     color: Colors.light.baseblack,
     textAlign: "center",
   },
+  permissionText: {
+    fontSize: 16,
+    color: Colors.light.baseblack,
+    textAlign: "center",
+    lineHeight: 24,
+  },
+  permissionHint: {
+    marginTop: 10,
+    fontSize: 14,
+    color: Colors.light.baseblack,
+    textAlign: "center",
+    fontStyle: "italic",
+  },
   actionButton: {
     backgroundColor: Colors.light.primary,
     paddingVertical: 15,
@@ -269,6 +375,10 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     width: "100%",
     alignItems: "center",
+  },
+  disabledButton: {
+    backgroundColor: Colors.light.grey,
+    opacity: 0.6,
   },
   stopButton: {
     backgroundColor: Colors.light.baseblack,
