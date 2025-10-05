@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, useCallback } from "react";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import {
   StyleSheet,
@@ -6,28 +6,42 @@ import {
   TouchableOpacity,
   FlatList,
   Alert,
+  ActivityIndicator,
+  RefreshControl,
+  Dimensions,
+  Modal,
 } from "react-native";
 import { AntDesign, FontAwesome } from "@expo/vector-icons";
 import CustomText from "@/shared/text/CustomText";
 import Topbar from "@/shared/Topbar/topbar";
 import Colors from "@/constants/Colors";
+import { useEvents } from "@/api/services/hooks/useEvents";
 
-const events = [
-  "Masquerade Ball",
-  "House Party",
-  "Nightlife",
-  "Rhythms of Youth",
-];
+const { height: screenHeight } = Dimensions.get("window");
 
 export default function TabOneScreen() {
-  const [selectedEvent, setSelectedEvent] = useState<string | null>(
-    "House Party"
-  );
+  const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [scannedData, setScannedData] = useState("");
   const [permission, requestPermission] = useCameraPermissions();
   const [isScanning, setIsScanning] = useState(false);
   const cameraRef = useRef(null);
+  const flatListRef = useRef<FlatList>(null);
+  const [modalVisible, setModalVisible] = useState(false);
+
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useEvents();
+
+  // Flatten all events from all pages
+  const allEvents = data?.pages.flatMap((page) => page.items) || [];
 
   // Check camera permission status
   useEffect(() => {
@@ -40,8 +54,15 @@ export default function TabOneScreen() {
     }
   }, [permission]);
 
-  const handleSelect = (event: string) => {
-    setSelectedEvent(event);
+  // Set first event as selected when data loads
+  useEffect(() => {
+    if (allEvents.length > 0 && !selectedEvent) {
+      setSelectedEvent(allEvents[0].name);
+    }
+  }, [allEvents, selectedEvent]);
+
+  const handleSelect = (eventName: string) => {
+    setSelectedEvent(eventName);
     setIsOpen(false);
   };
 
@@ -52,17 +73,14 @@ export default function TabOneScreen() {
   };
 
   const startScanning = async () => {
-    // Check if we already have permission
     if (permission?.granted) {
       setIsScanning(true);
       setScannedData("");
       return;
     }
 
-    // Request permission if not granted
     try {
       const permissionResponse = await requestPermission();
-
       if (permissionResponse.granted) {
         setIsScanning(true);
         setScannedData("");
@@ -79,6 +97,58 @@ export default function TabOneScreen() {
         { text: "OK" },
       ]);
     }
+  };
+
+  const loadMoreEvents = () => {
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  };
+
+  const renderFooter = () => {
+    if (!isFetchingNextPage) return null;
+
+    return (
+      <View style={styles.footerLoader}>
+        <ActivityIndicator size="small" color={Colors.light.primary} />
+        <CustomText style={styles.loadingText}>
+          Loading more events...
+        </CustomText>
+      </View>
+    );
+  };
+
+  const renderEmpty = () => {
+    if (isLoading) {
+      return (
+        <View style={styles.emptyState}>
+          <ActivityIndicator size="large" color={Colors.light.primary} />
+          <CustomText style={styles.emptyText}>Loading events...</CustomText>
+        </View>
+      );
+    }
+
+    if (isError) {
+      return (
+        <View style={styles.emptyState}>
+          <CustomText style={styles.errorText}>
+            {error?.message || "Failed to load events"}
+          </CustomText>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => refetch()}
+          >
+            <CustomText style={styles.retryButtonText}>Try Again</CustomText>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.emptyState}>
+        <CustomText style={styles.emptyText}>No events available</CustomText>
+      </View>
+    );
   };
 
   // Show loading while checking permissions
@@ -116,32 +186,74 @@ export default function TabOneScreen() {
 
         {/* Dropdown Container */}
         <View style={styles.dropdownContainer}>
-          <TouchableOpacity
-            style={styles.dropdown}
-            onPress={() => setIsOpen(!isOpen)}
-            activeOpacity={0.7}
-          >
-            <CustomText style={styles.selectedText}>{selectedEvent}</CustomText>
-            <AntDesign name={isOpen ? "up" : "down"} size={20} color="#333" />
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity
+              style={styles.dropdown}
+              onPress={() => setModalVisible(true)}
+              activeOpacity={0.7}
+              disabled={isLoading || isError}
+            >
+              <CustomText style={styles.selectedText}>
+                {selectedEvent ||
+                  (isLoading ? "Loading events..." : "Select an event")}
+              </CustomText>
+              <AntDesign name="down" size={20} color="#333" />
+            </TouchableOpacity>
 
-          {/* Dropdown List - Positioned absolutely so it doesn't affect layout */}
-          {isOpen && (
-            <View style={styles.dropdownList}>
-              <FlatList
-                data={events}
-                keyExtractor={(item) => item}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={styles.option}
-                    onPress={() => handleSelect(item)}
-                  >
-                    <CustomText style={styles.optionText}>{item}</CustomText>
-                  </TouchableOpacity>
-                )}
-              />
-            </View>
-          )}
+            <Modal
+              visible={modalVisible}
+              animationType="slide"
+              transparent={true}
+              onRequestClose={() => setModalVisible(false)}
+            >
+              <View style={styles.modalOverlay}>
+                <View style={styles.modalContainer}>
+                  <View style={styles.modalHeader}>
+                    <CustomText style={styles.modalTitle}>
+                      Select Event
+                    </CustomText>
+                    <TouchableOpacity
+                      onPress={() => setModalVisible(false)}
+                      style={styles.closeButton}
+                    >
+                      <AntDesign name="close" size={24} color="#333" />
+                    </TouchableOpacity>
+                  </View>
+
+                  <FlatList
+                    data={allEvents}
+                    keyExtractor={(item) => item.id}
+                    renderItem={({ item }) => (
+                      <TouchableOpacity
+                        style={styles.modalOption}
+                        onPress={() => {
+                          handleSelect(item.name);
+                          setModalVisible(false);
+                        }}
+                      >
+                        <CustomText style={styles.optionText}>
+                          {item.name}
+                        </CustomText>
+                      </TouchableOpacity>
+                    )}
+                    ListEmptyComponent={renderEmpty}
+                    ListFooterComponent={renderFooter}
+                    onEndReached={loadMoreEvents}
+                    onEndReachedThreshold={0.5}
+                    refreshControl={
+                      <RefreshControl
+                        refreshing={isLoading && !isFetchingNextPage}
+                        onRefresh={refetch}
+                        colors={[Colors.light.primary]}
+                      />
+                    }
+                    style={styles.modalFlatList}
+                    contentContainerStyle={styles.modalContentContainer}
+                  />
+                </View>
+              </View>
+            </Modal>
+          </>
         </View>
 
         <View style={styles.scanContainer}>
@@ -186,10 +298,14 @@ export default function TabOneScreen() {
             <TouchableOpacity
               style={[
                 styles.actionButton,
-                !permission.granted && styles.disabledButton,
+                (!permission.granted || !selectedEvent) &&
+                  styles.disabledButton,
               ]}
               onPress={startScanning}
-              disabled={!permission.granted && !permission.canAskAgain}
+              disabled={
+                (!permission.granted && !permission.canAskAgain) ||
+                !selectedEvent
+              }
             >
               <CustomText style={styles.actionButtonText}>
                 {scannedData ? "Scan Again" : "Start Scanning"}
@@ -245,35 +361,12 @@ const styles = StyleSheet.create({
   selectedText: {
     fontSize: 16,
     color: "#333",
-  },
-  dropdownList: {
-    position: "absolute",
-    top: "100%",
-    left: 0,
-    right: 0,
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    backgroundColor: Colors.light.white,
-    maxHeight: 200,
-    overflow: "hidden",
-    marginTop: 4,
-    elevation: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    zIndex: 1001,
-  },
-  option: {
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.grey,
+    flex: 1,
   },
   optionText: {
     fontSize: 16,
     color: "#333",
+    fontWeight: "600",
   },
   scanContainer: {
     flex: 1,
@@ -387,5 +480,85 @@ const styles = StyleSheet.create({
     color: Colors.light.white,
     fontSize: 16,
     fontWeight: "bold",
+  },
+  footerLoader: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 16,
+  },
+  loadingText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: Colors.light.text2,
+  },
+  emptyState: {
+    padding: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 120,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: Colors.light.text2,
+    textAlign: "center",
+    marginTop: 8,
+  },
+  errorText: {
+    fontSize: 14,
+    color: Colors.light.primary,
+    textAlign: "center",
+    marginBottom: 12,
+  },
+  retryButton: {
+    backgroundColor: Colors.light.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  retryButtonText: {
+    color: Colors.light.white,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContainer: {
+    height: screenHeight * 0.5,
+    backgroundColor: Colors.light.white,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    overflow: "hidden",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.grey,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  closeButton: {
+    padding: 4,
+  },
+  modalOption: {
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.grey,
+  },
+  modalFlatList: {
+    flex: 1,
+  },
+  modalContentContainer: {
+    flexGrow: 1,
   },
 });

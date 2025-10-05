@@ -6,14 +6,30 @@ import Colors from "@/constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
 import Button from "@/shared/button";
 import { router } from "expo-router";
+import { useLogin } from "@/api/services/hooks/useAuth";
+import { useToast } from "@/shared/toast/ToastContext";
 
 const Login = () => {
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const { showToast } = useToast();
+
+  const loginMutation = useLogin();
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
   };
+
+  const handleLogin = () => {
+    if (!email || !password) {
+      showToast("Login successful!", "error");
+      return;
+    }
+
+    loginMutation.mutate({ email, password });
+  };
+
   const renderEyeIcon = () => (
     <Ionicons
       name={showPassword ? "eye-off-outline" : "eye-outline"}
@@ -21,6 +37,7 @@ const Login = () => {
       color={Colors.light.baseblack}
     />
   );
+
   return (
     <View style={styles.container}>
       <Image
@@ -37,10 +54,13 @@ const Login = () => {
       </View>
       <View style={{ marginTop: 12, gap: 6 }}>
         <Inputfield
-          placeholder="usename@gmail.com"
+          placeholder="username@gmail.com"
           label="Email"
+          value={email}
+          onChangeText={setEmail}
           leftIcon={true}
           leftIconSource={require("@/assets/icon/envilope.png")}
+          keyboardType="email-address"
         />
 
         <Inputfield
@@ -64,9 +84,14 @@ const Login = () => {
             Forgot Password ?
           </CustomText>
         </Pressable>
+
         <View style={{ marginTop: 12 }}>
-          <Button onPress={() => router.push("/(mainapp)/(tabs)")}>
-            Log In
+          <Button
+            onPress={handleLogin}
+            loading={loginMutation.isPending}
+            disabled={loginMutation.isPending}
+          >
+            {loginMutation.isPending ? "Logging in..." : "Log In"}
           </Button>
         </View>
       </View>

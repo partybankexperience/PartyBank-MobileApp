@@ -9,17 +9,17 @@ import { Slot, Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 import "react-native-reanimated";
-
-import { useColorScheme } from "@/components/useColorScheme";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import { ToastProvider } from "@/shared/toast/ToastContext";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+const queryClient = new QueryClient();
 
 export {
   // Catch any errors thrown by the Layout component.
   ErrorBoundary,
 } from "expo-router";
-
-
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -41,8 +41,12 @@ export default function RootLayout() {
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
-      <StatusBar style="dark" backgroundColor="#fff" />
-      <Slot />
+      <QueryClientProvider client={queryClient}>
+        <ToastProvider>
+          <StatusBar style="dark" backgroundColor="#fff" />
+          <Slot />
+        </ToastProvider>
+      </QueryClientProvider>
     </SafeAreaView>
   );
 }

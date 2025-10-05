@@ -2,11 +2,11 @@ import React, { useEffect } from "react";
 import { View, StyleSheet, Image } from "react-native";
 import { useRouter } from "expo-router";
 import * as Updates from "expo-updates";
-import { Redirect } from "expo-router";
+import { useAuth } from "@/api/services/hooks/useAuth";
 
 const SplashScreen = () => {
   const router = useRouter();
-  const [redirect, setRedirect] = React.useState(false);
+  const { getToken } = useAuth();
 
   async function onFetchUpdateAsync() {
     try {
@@ -16,7 +16,6 @@ const SplashScreen = () => {
         await Updates.reloadAsync();
       }
     } catch (error) {
-      // console.error(`Error fetching latest Expo update: ${error}`);
     }
   }
 
@@ -28,14 +27,31 @@ const SplashScreen = () => {
         console.error("Error checking for updates:", error);
       }
     };
+
     checkForUpdates();
   }, []);
 
   useEffect(() => {
+    const checkAuthentication = async () => {
+      try {
+        const token = await getToken();
+        console.log("Token exists:", token);
+
+        if (!token) {
+          router.replace("/login");
+        } else {
+          router.replace("/(mainapp)/(tabs)");
+        }
+      } catch (error) {
+        console.error("Error checking token:", error);
+        router.replace("/login");
+      }
+    };
+
     const timer = setTimeout(() => {
-      setRedirect(true);
-      router.push("/login");
+      checkAuthentication();
     }, 2000);
+
     return () => clearTimeout(timer);
   }, []);
 

@@ -4,6 +4,8 @@ import {
   ScrollView,
   StyleSheet,
   View,
+  ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import React from "react";
 import Topbar from "@/shared/Topbar/topbar";
@@ -13,21 +15,70 @@ import {
 } from "react-native-responsive-screen";
 import CustomText from "@/shared/text/CustomText";
 import Colors from "@/constants/Colors";
-
-type TicketTypeCardProps = {
-  title: string;
-  scanned: number;
-  total: number;
-};
+import { useLocalSearchParams } from "expo-router";
+import { useEventSummary } from "@/api/services/hooks/useEventSummary";
+import { TicketTypeCardProps } from "@/api/services/type";
 
 const TicketScanner = () => {
+  const { eventId } = useLocalSearchParams();
+  const {
+    data: eventSummary,
+    isLoading,
+    isError,
+    error,
+    refetch,
+    isRefetching,
+  } = useEventSummary(eventId as string);
+
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <Topbar>Ticket Scanning</Topbar>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.light.primary} />
+          <CustomText style={styles.loadingText}>
+            Loading event summary...
+          </CustomText>
+        </View>
+      </View>
+    );
+  }
+
+  if (isError) {
+    return (
+      <View style={styles.container}>
+        <Topbar>Ticket Scanning</Topbar>
+        <View style={styles.errorContainer}>
+          <CustomText style={styles.errorText}>
+            {error?.message || "Failed to load event summary"}
+          </CustomText>
+          <CustomText style={styles.retryText} onPress={() => refetch()}>
+            Tap to retry
+          </CustomText>
+        </View>
+      </View>
+    );
+  }
+
+  const totals = eventSummary?.totals || { sold: 0, scanned: 0, unscanned: 0 };
+  const ticketTypes = eventSummary?.byTicket || [];
+
   return (
     <View style={styles.container}>
       <Topbar>Ticket Scanning</Topbar>
       <ScrollView
         showsVerticalScrollIndicator={false}
         style={styles.scrollView}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefetching}
+            onRefresh={refetch}
+            colors={[Colors.light.primary]}
+            tintColor={Colors.light.primary}
+          />
+        }
       >
+        {/* Banner Section */}
         <ImageBackground
           source={require("@/assets/images/banner.png")}
           style={styles.background}
@@ -37,13 +88,13 @@ const TicketScanner = () => {
               Scanned Tickets
             </CustomText>
             <CustomText color={Colors.light.white} bold={true} variant="h1">
-              50/
+              {totals.scanned}/
               <CustomText
                 color={Colors.light.white}
                 extrabold={true}
                 variant="h1"
               >
-                100
+                {totals.sold}
               </CustomText>
             </CustomText>
           </View>
@@ -68,10 +119,14 @@ const TicketScanner = () => {
         </View>
 
         <View style={styles.ticketGrid}>
-          <TicketTypeCard title="Early Birds" scanned={50} total={100} />
-          <TicketTypeCard title="Standard" scanned={50} total={100} />
-          <TicketTypeCard title="Lounge Access" scanned={50} total={100} />
-          <TicketTypeCard title="Event Day" scanned={50} total={100} />
+          {ticketTypes.map((ticket) => (
+            <TicketTypeCard
+              key={ticket.ticketId}
+              title={ticket.ticketName}
+              scanned={ticket.scanned}
+              total={ticket.sold}
+            />
+          ))}
         </View>
       </ScrollView>
     </View>
@@ -168,5 +223,32 @@ const styles = StyleSheet.create({
   ticketSpiralImage: {
     height: hp("6%"),
     width: wp("12%"),
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: Colors.light.text2,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+    gap: 16,
+  },
+  errorText: {
+    fontSize: 16,
+    color: Colors.light.primary,
+    textAlign: "center",
+  },
+  retryText: {
+    fontSize: 14,
+    color: Colors.light.primary,
+    textDecorationLine: "underline",
   },
 });

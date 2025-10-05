@@ -1,5 +1,5 @@
 import React, { FC } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 import CustomText from "../text/CustomText";
 import Colors from "@/constants/Colors";
 
@@ -9,6 +9,7 @@ interface ButtonProps {
   children: React.ReactNode;
   disabled?: boolean;
   buttonStyle?: object;
+  loading?: boolean;
 }
 
 const Button: FC<ButtonProps> = ({
@@ -17,6 +18,7 @@ const Button: FC<ButtonProps> = ({
   children,
   disabled,
   buttonStyle,
+  loading,
 }) => {
   return (
     <View>
@@ -33,17 +35,21 @@ const Button: FC<ButtonProps> = ({
         ]}
         disabled={disabled}
       >
-        <CustomText
-          bold={true}
-          style={[
-            styles.buttonText,
-            mode === "pill" && styles.pillText,
-            mode === "flat" && styles.flatText,
-            mode === "normal" && styles.normalText,
-          ]}
-        >
-          {children}
-        </CustomText>
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <CustomText
+            bold={true}
+            style={[
+              styles.buttonText,
+              mode === "pill" && styles.pillText,
+              mode === "flat" && styles.flatText,
+              mode === "normal" && styles.normalText,
+            ]}
+          >
+            {children}
+          </CustomText>
+        )}
       </Pressable>
     </View>
   );
