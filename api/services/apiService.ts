@@ -4,6 +4,11 @@ import {
   EventSummary,
   LoginRequest,
   LoginResponse,
+  ResetPasswordInitiateResponse,
+  ResetPasswordSubmitRequest,
+  ResetPasswordSubmitResponse,
+  VerifyOtpRequest,
+  VerifyOtpResponse,
 } from "./type";
 import api from "../apiInstance";
 
@@ -12,10 +17,53 @@ export const authApi = {
     const response = await api.post("/auth/login", credentials);
 
     const data = await response.data;
+    console.log("data", data);
 
     if (!data) {
       throw new Error(data.message || "Login failed");
     }
+    return data;
+  },
+  resetPasswordInitiate: async (
+    email: string
+  ): Promise<ResetPasswordInitiateResponse> => {
+    const response = await api.post("/reset-password/initiate", { email });
+
+    const data = await response.data;
+
+    console.log(data);
+    if (!response.data) {
+      throw new Error(data.message || "Failed to initiate password reset");
+    }
+
+    return data;
+  },
+  verifyOtp: async (request: VerifyOtpRequest): Promise<VerifyOtpResponse> => {
+    const response = await api.post("/reset-password/verify", request);
+
+    const data = await response.data;
+
+    console.log("OTP Verification Response:", data);
+
+    if (!response.data) {
+      throw new Error(data.message || "Failed to verify OTP");
+    }
+
+    return data;
+  },
+  resetPasswordSubmit: async (
+    request: ResetPasswordSubmitRequest
+  ): Promise<ResetPasswordSubmitResponse> => {
+    const response = await api.post("/reset-password/submit", request);
+
+    const data = await response.data;
+
+    console.log("Reset Password Response:", data);
+
+    if (!response.data) {
+      throw new Error(data.message || "Failed to reset password");
+    }
+
     return data;
   },
 };

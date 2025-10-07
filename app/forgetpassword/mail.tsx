@@ -1,16 +1,19 @@
-import { Image, StyleSheet, Text, TextInput, View } from "react-native";
+import { Image, StyleSheet, TextInput, View, Alert } from "react-native";
 import React, { useEffect, useRef, useState } from "react";
 import CustomText from "@/shared/text/CustomText";
 import Button from "@/shared/button";
-import { Inputfield } from "@/shared/inputfield";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import Colors from "@/constants/Colors";
+import { useVerifyOtp } from "@/api/services/hooks/useAuth";
 
 const Mail = () => {
   const [otp, setOtp] = useState(new Array(4).fill(""));
   const [activeOTPIndex, setActiveOTPIndex] = useState(0);
   const inputRefs = useRef<Array<TextInput | null>>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isOtpComplete, setIsOtpComplete] = useState(false);
+
+  const { email } = useLocalSearchParams();
+  const verifyOtpMutation = useVerifyOtp();
 
   useEffect(() => {
     // Focus the active input
@@ -20,13 +23,9 @@ const Mail = () => {
   }, [activeOTPIndex]);
 
   useEffect(() => {
-    if (otp.every((d) => d !== "") && !isSubmitting) {
-      setIsSubmitting(true);
-      // Auto-submit when all fields are filled
-      setTimeout(() => {
-        router.push("/");
-      }, 500);
-    }
+    // Check if OTP is complete (all 4 digits filled)
+    const complete = otp.every((digit) => digit !== "");
+    setIsOtpComplete(complete);
   }, [otp]);
 
   const handleOnChange = (text: string, index: number) => {
@@ -57,6 +56,34 @@ const Mail = () => {
   const handleInputFocus = (index: number) => {
     setActiveOTPIndex(index);
   };
+
+  const handleVerifyOtp = async () => {
+    if (!isOtpComplete) {
+      Alert.alert("Incomplete OTP", "Please enter all 4 digits of the OTP.");
+      return;
+    }
+
+    const otpString = otp.join("");
+
+    try {
+      await verifyOtpMutation.mutateAsync({
+        email: email as string,
+        otp: otpString,
+      });
+
+      // Navigate to new password screen on success
+      router.push({
+        pathname: "/forgetpassword/newpassword",
+        params: {
+          email: email as string,
+          otp: otpString,
+        },
+      });
+    } catch (error) {
+      console.error("OTP verification error:", error);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <Image
@@ -68,9 +95,12 @@ const Mail = () => {
           Check Your Email
         </CustomText>
         <CustomText medium={true} variant="h5" style={{ maxWidth: 300 }}>
-          We Sent an 4 Digit Code To
+          We sent a 4-digit code to your mail
         </CustomText>
+   
       </View>
+
+      {/* OTP Input Section */}
       <View style={styles.otpContainer}>
         {otp.map((digit, index) => (
           <TextInput
@@ -78,6 +108,7 @@ const Mail = () => {
             style={[
               styles.otpInput,
               activeOTPIndex === index && styles.otpInputFocused,
+              digit !== "" && styles.otpInputFilled,
             ]}
             ref={(el) => {
               inputRefs.current[index] = el;
@@ -93,12 +124,16 @@ const Mail = () => {
           />
         ))}
       </View>
-      <View style={{ marginTop: 12, gap: 6 }}>
-        <View style={{ marginTop: 12 }}>
-          <Button onPress={() => router.push("/forgetpassword/newpassword")}>
-            Send
-          </Button>
-        </View>
+
+      {/* Action Buttons */}
+      <View style={{ marginTop: 12, gap: 16 }}>
+        <Button
+          onPress={handleVerifyOtp}
+          loading={verifyOtpMutation.isPending}
+          disabled={verifyOtpMutation.isPending || !isOtpComplete}
+        >
+          {verifyOtpMutation.isPending ? "Verifying..." : "Verify OTP"}
+        </Button>
       </View>
     </View>
   );
@@ -115,6 +150,10 @@ const styles = StyleSheet.create({
     height: 87,
     width: 87,
     resizeMode: "contain",
+  },
+  emailText: {
+    color: Colors.light.primary,
+    marginTop: 4,
   },
   otpContainer: {
     flexDirection: "row",
@@ -135,7 +174,20 @@ const styles = StyleSheet.create({
     borderColor: Colors.light.border,
   },
   otpInputFocused: {
-    borderColor: Colors.light.border,
+    borderColor: Colors.light.primary,
     borderWidth: 2,
+  },
+  otpInputFilled: {
+    borderColor: Colors.light.green,
+    backgroundColor: Colors.light.grey100,
+  },
+  resendText: {
+    textAlign: "center",
+    color: Colors.light.text2,
+    fontSize: 14,
+  },
+  resendLink: {
+    color: Colors.light.primary,
+    textDecorationLine: "underline",
   },
 });

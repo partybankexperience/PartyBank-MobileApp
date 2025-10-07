@@ -19,9 +19,27 @@ const api: AxiosInstance = axios.create({
   },
 });
 
-// Add request interceptor to include access token and check expiration
+// List of endpoints that don't require authentication
+const publicEndpoints = [
+  "/auth/login",
+  "/reset-password/initiate",
+  "/reset-password/verify",
+  "/reset-password/submit",
+];
+
 api.interceptors.request.use(
   async (config: CustomAxiosRequestConfig) => {
+    // Check if this is a public endpoint
+    const isPublicEndpoint = publicEndpoints.some((endpoint) =>
+      config.url?.includes(endpoint)
+    );
+
+    // Skip token check for public endpoints
+    if (isPublicEndpoint) {
+      console.log("Public endpoint, skipping token check");
+      return config;
+    }
+
     const hasValidToken = await tokenService.hasValidToken();
 
     // Check if token exists and is not expired
@@ -53,8 +71,13 @@ api.interceptors.response.use(
 
     // Handle 401 Unauthorized errors
     if (originalRequest && error.response?.status === 401) {
-      await tokenService.clearTokens();
-      router.replace("/login");
+      // Don't redirect if it's a login request (avoid infinite loop)
+      const isLoginEndpoint = originalRequest.url?.includes("/auth/login");
+
+      if (!isLoginEndpoint) {
+        await tokenService.clearTokens();
+        router.replace("/login");
+      }
     }
 
     return Promise.reject(error);

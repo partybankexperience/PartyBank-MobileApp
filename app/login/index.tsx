@@ -89,7 +89,7 @@ const Login = () => {
           <Button
             onPress={handleLogin}
             loading={loginMutation.isPending}
-            disabled={loginMutation.isPending}
+            disabled={loginMutation.isPending || !email || password.length < 8}
           >
             {loginMutation.isPending ? "Logging in..." : "Log In"}
           </Button>

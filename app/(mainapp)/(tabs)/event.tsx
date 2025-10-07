@@ -7,16 +7,19 @@ import {
 } from "react-native";
 import { View } from "@/components/Themed";
 import Topbar from "@/shared/Topbar/topbar";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import CustomText from "@/shared/text/CustomText";
 import Colors from "@/constants/Colors";
 import EventDetails from "../component/event/EventDetails";
 import { useEvents } from "@/api/services/hooks/useEvents";
+import { useToast } from "@/shared/toast/ToastContext";
 
 export default function EventTab() {
   const [activeTab, setActiveTab] = useState<"ACTIVE" | "UPCOMING" | "PAST">(
     "ACTIVE"
   );
+  const { showToast } = useToast();
+  const errorToastShownRef = useRef(false);
 
   const {
     data,
@@ -29,6 +32,18 @@ export default function EventTab() {
     refetch,
   } = useEvents();
 
+  useEffect(() => {
+    if (isError && !errorToastShownRef.current) {
+      showToast(`No events found`, "warning");
+      errorToastShownRef.current = true;
+    }
+
+    // Reset the ref when we're no longer in error state
+    if (!isError) {
+      errorToastShownRef.current = false;
+    }
+  }, [isError]);
+
   const handleTabChange = (tab: "ACTIVE" | "UPCOMING" | "PAST") => {
     setActiveTab(tab);
   };
@@ -38,7 +53,7 @@ export default function EventTab() {
 
   // Filter events based on active tab and timingStatus
   const filteredEvents = allEvents.filter((event) => {
-    const status = event.timingStatus.toLowerCase();
+    const status = event.timingStatus?.toLowerCase();
     switch (activeTab) {
       case "ACTIVE":
         return status === "active";
@@ -50,11 +65,6 @@ export default function EventTab() {
         return true;
     }
   });
-
-  // Handle error state
-  if (isError) {
-    Alert.alert("Error", error?.message || "Failed to load events");
-  }
 
   return (
     <View style={styles.container}>
@@ -151,7 +161,9 @@ export default function EventTab() {
             {/* Empty state */}
             {!isLoading && filteredEvents.length === 0 && (
               <View style={styles.emptyContainer}>
-                <CustomText>No {activeTab.toLowerCase()} events found</CustomText>
+                <CustomText>
+                  No {activeTab.toLowerCase()} events found
+                </CustomText>
               </View>
             )}
           </>

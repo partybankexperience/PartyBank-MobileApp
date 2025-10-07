@@ -75,4 +75,32 @@ export interface TicketTypeCardProps {
   title: string;
   scanned: number;
   total: number;
-};
+}
+
+export interface ResetPasswordInitiateRequest {
+  email: string;
+}
+
+export interface ResetPasswordInitiateResponse {
+  message: string;
+}
+
+export interface VerifyOtpRequest {
+  email: string;
+  otp: string;
+}
+
+export interface VerifyOtpResponse {
+  message: string;
+}
+
+export interface ResetPasswordSubmitRequest {
+  email: string;
+  password: string;
+  confirmPassword: string;
+}
+
+export interface ResetPasswordSubmitResponse {
+  message: string;
+  success?: boolean;
+}
