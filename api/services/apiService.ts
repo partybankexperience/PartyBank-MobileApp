@@ -7,6 +7,8 @@ import {
   ResetPasswordInitiateResponse,
   ResetPasswordSubmitRequest,
   ResetPasswordSubmitResponse,
+  ScanVerifyRequest,
+  ScanVerifyResponse,
   VerifyOtpRequest,
   VerifyOtpResponse,
 } from "./type";
@@ -17,7 +19,6 @@ export const authApi = {
     const response = await api.post("/auth/login", credentials);
 
     const data = await response.data;
-    console.log("data", data);
 
     if (!data) {
       throw new Error(data.message || "Login failed");
@@ -31,7 +32,6 @@ export const authApi = {
 
     const data = await response.data;
 
-    console.log(data);
     if (!response.data) {
       throw new Error(data.message || "Failed to initiate password reset");
     }
@@ -42,8 +42,6 @@ export const authApi = {
     const response = await api.post("/reset-password/verify", request);
 
     const data = await response.data;
-
-    console.log("OTP Verification Response:", data);
 
     if (!response.data) {
       throw new Error(data.message || "Failed to verify OTP");
@@ -57,8 +55,6 @@ export const authApi = {
     const response = await api.post("/reset-password/submit", request);
 
     const data = await response.data;
-
-    console.log("Reset Password Response:", data);
 
     if (!response.data) {
       throw new Error(data.message || "Failed to reset password");
@@ -97,6 +93,30 @@ export const scanApi = {
 
     return data;
   },
+
+  verifyScan: async (
+    request: ScanVerifyRequest
+  ): Promise<ScanVerifyResponse> => {
+    const token = await tokenService.getAccessToken();
+
+    if (!token) {
+      throw new Error("No authentication token found");
+    }
+
+    const response = await api.post("/scan/verify", request, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await response.data;
+
+    if (!response.data) {
+      throw new Error(data.message || "Failed to verify scan");
+    }
+
+    return data;
+  },
 };
 
 export const tokenService = {
@@ -106,7 +126,6 @@ export const tokenService = {
 
     // Verify token was stored
     const storedToken = await StorageService.getItem("accessToken");
-    console.log("Token stored successfully:", !!storedToken);
   },
 
   clearTokens: async (): Promise<void> => {

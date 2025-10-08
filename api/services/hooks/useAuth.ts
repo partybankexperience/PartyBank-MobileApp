@@ -21,8 +21,6 @@ export const useLogin = () => {
   return useMutation<LoginResponse, ApiError, LoginRequest>({
     mutationFn: authApi.login,
     onSuccess: async (data) => {
-      console.log("Login response:", data);
-
       // Extract the accessToken from the response
       const { accessToken } = data;
 
@@ -35,7 +33,6 @@ export const useLogin = () => {
 
       // Verify token was stored
       const storedToken = await tokenService.getAccessToken();
-      console.log("Token verification - stored:", !!storedToken);
 
       // Show success toast
       showToast("Login successful!", "success");
@@ -83,8 +80,6 @@ export const useResetPasswordInitiate = () => {
   >({
     mutationFn: ({ email }) => authApi.resetPasswordInitiate(email),
     onSuccess: (data) => {
-      console.log(data);
-
       showToast(
         data.message || "Password reset instructions sent to your email",
         "success"
@@ -97,9 +92,6 @@ export const useResetPasswordInitiate = () => {
         error.message ||
         "Failed to send reset instructions";
 
-      console.log("This is the error", errorMessage);
-      console.log("Full error details:", error.response?.data);
-
       showToast(errorMessage, "error");
     },
   });
@@ -111,7 +103,6 @@ export const useVerifyOtp = () => {
   return useMutation<VerifyOtpResponse, ApiError, VerifyOtpRequest>({
     mutationFn: authApi.verifyOtp,
     onSuccess: (data) => {
-      console.log("OTP verification success:", data);
       showToast(data.message || "OTP verified successfully", "success");
     },
     onError: (error: any) => {
@@ -120,7 +111,6 @@ export const useVerifyOtp = () => {
         error.message ||
         "Failed to verify OTP";
 
-      console.log("OTP verification error:", errorMessage);
       showToast(errorMessage, "error");
     },
   });
@@ -136,7 +126,6 @@ export const useResetPasswordSubmit = () => {
   >({
     mutationFn: authApi.resetPasswordSubmit,
     onSuccess: (data) => {
-      console.log("Password reset success:", data);
       showToast(data.message || "Password reset successfully", "success");
     },
     onError: (error: any) => {
@@ -145,7 +134,6 @@ export const useResetPasswordSubmit = () => {
         error.message ||
         "Failed to reset password";
 
-      console.log("Password reset error:", errorMessage);
       showToast(errorMessage, "error");
     },
   });

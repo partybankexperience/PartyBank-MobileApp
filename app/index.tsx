@@ -15,17 +15,14 @@ const SplashScreen = () => {
         await Updates.fetchUpdateAsync();
         await Updates.reloadAsync();
       }
-    } catch (error) {
-    }
+    } catch (error) {}
   }
 
   useEffect(() => {
     const checkForUpdates = async () => {
       try {
         await onFetchUpdateAsync();
-      } catch (error) {
-        console.error("Error checking for updates:", error);
-      }
+      } catch (error) {}
     };
 
     checkForUpdates();
@@ -35,13 +32,12 @@ const SplashScreen = () => {
     const checkAuthentication = async () => {
       try {
         const token = await getToken();
-        console.log("Token exists:", token);
 
         if (!token) {
           router.replace("/login");
         } else {
-          router.replace("/(mainapp)/(tabs)");
-          // router.replace("/login");
+          // router.replace("/(mainapp)/(tabs)");
+          router.replace("/login");
         }
       } catch (error) {
         console.error("Error checking token:", error);

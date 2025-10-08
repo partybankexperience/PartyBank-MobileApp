@@ -25,6 +25,7 @@ const publicEndpoints = [
   "/reset-password/initiate",
   "/reset-password/verify",
   "/reset-password/submit",
+  "/scan/verify",
 ];
 
 api.interceptors.request.use(
@@ -36,7 +37,6 @@ api.interceptors.request.use(
 
     // Skip token check for public endpoints
     if (isPublicEndpoint) {
-      console.log("Public endpoint, skipping token check");
       return config;
     }
 
@@ -53,7 +53,6 @@ api.interceptors.request.use(
 
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`;
-      console.log("Request with token:", accessToken.substring(0, 20) + "...");
     }
     return config;
   },

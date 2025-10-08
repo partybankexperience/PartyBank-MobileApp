@@ -104,3 +104,31 @@ export interface ResetPasswordSubmitResponse {
   message: string;
   success?: boolean;
 }
+
+export interface ScanVerifyRequest {
+  eventId: string;
+  code: string;
+  method: "qr" | "manual";
+  timestamp: string;
+  signature: string;
+}
+
+export interface ScanVerifyResponse {
+  outcome: string;
+  ticket: {
+    ticketId: string;
+    ticketName: string;
+    holder: string;
+    email: string;
+  };
+  scan: {
+    gate: string;
+    method: string;
+    deviceId: string | null;
+    scannedAt: string;
+  };
+  stats: {
+    scanned: number;
+    total: number;
+  };
+}
