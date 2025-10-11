@@ -1,9 +1,11 @@
 import { StorageService } from "@/app/state/storageService";
 import {
+  AcceptInviteResponse,
   EventsResponse,
   EventSummary,
   LoginRequest,
   LoginResponse,
+  PendingEventsResponse,
   ResetPasswordInitiateResponse,
   ResetPasswordSubmitRequest,
   ResetPasswordSubmitResponse,
@@ -103,16 +105,44 @@ export const scanApi = {
       throw new Error("No authentication token found");
     }
 
-    const response = await api.post("/scan/verify", request, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await api.post("/scan/verify", request);
 
     const data = await response.data;
 
     if (!response.data) {
       throw new Error(data.message || "Failed to verify scan");
+    }
+
+    return data;
+  },
+
+  getPendingEvents: async (
+    page: number = 1,
+    pageSize: number = 20
+  ): Promise<PendingEventsResponse> => {
+    const response = await api.get(
+      `/invites/me/pending-invites?page=${page}&pageSize=${pageSize}`
+    );
+
+    const data = await response.data;
+
+    if (!data) {
+      throw new Error(data.message || "Failed to fetch events");
+    }
+
+    return data;
+  },
+};
+
+export const inviteApi = {
+  acceptInvite: async (inviteId: string): Promise<AcceptInviteResponse> => {
+    const response = await api.post(`/invites/${inviteId}/accept`);
+
+    const data = await response.data;
+    console.log("This is the data", data);
+
+    if (!response.data) {
+      throw new Error(data.message || "Failed to accept invite");
     }
 
     return data;
@@ -127,6 +157,7 @@ export const tokenService = {
     // Verify token was stored
     const storedToken = await StorageService.getItem("accessToken");
   },
+  
 
   clearTokens: async (): Promise<void> => {
     await StorageService.removeItem("accessToken");

@@ -1,19 +1,14 @@
-import { Entypo } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React from "react";
-import { Image, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Image, Pressable, StyleSheet, View } from "react-native";
 import CustomText from "../text/CustomText";
 
 interface TopbarProps {
   children?: React.ReactNode;
 }
 
-const Topbar = ({ children, }: TopbarProps) => {
+const Topbar = ({ children }: TopbarProps) => {
   const router = useRouter();
-
-  const handleGoback = () => {
-    router.back();
-  };
 
   return (
     <View style={styles.header}>
@@ -21,12 +16,15 @@ const Topbar = ({ children, }: TopbarProps) => {
         {children}
       </CustomText>
 
-      <View style={styles.rightContainer}>
+      <Pressable
+        style={styles.rightContainer}
+        onPress={() => router.push("/profile")}
+      >
         <Image
-          source={require("@/assets/images/logo.png")}
+          source={require("@/assets/images/profile.png")}
           style={styles.image}
         />
-      </View>
+      </Pressable>
     </View>
   );
 };

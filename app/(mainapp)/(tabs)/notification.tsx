@@ -14,7 +14,7 @@ export default function NotificationTab() {
   return (
     <View style={styles.container}>
       <Topbar>Notification</Topbar>
-      <View style={styles.contentContainer}>
+      {/* <View style={styles.contentContainer}>
         <View style={styles.clearAllContainer}>
           <Pressable style={{ alignSelf: "flex-end" }}>
             <CustomText
@@ -63,7 +63,7 @@ export default function NotificationTab() {
             time="2 hours ago"
           />
         </ScrollView>
-      </View>
+      </View> */}
     </View>
   );
 }

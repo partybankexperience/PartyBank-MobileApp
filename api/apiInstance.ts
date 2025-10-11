@@ -25,7 +25,6 @@ const publicEndpoints = [
   "/reset-password/initiate",
   "/reset-password/verify",
   "/reset-password/submit",
-  "/scan/verify",
 ];
 
 api.interceptors.request.use(

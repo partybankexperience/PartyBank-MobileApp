@@ -36,8 +36,8 @@ const SplashScreen = () => {
         if (!token) {
           router.replace("/login");
         } else {
-          // router.replace("/(mainapp)/(tabs)");
-          router.replace("/login");
+          router.replace("/(mainapp)/(tabs)");
+          // router.replace("/login");
         }
       } catch (error) {
         console.error("Error checking token:", error);

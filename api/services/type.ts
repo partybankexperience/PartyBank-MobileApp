@@ -39,9 +39,27 @@ export interface Event {
   totalTicketsPurchased: string;
   totalBuyers: string;
 }
+export interface PendingEvent {
+  id: string;
+  emailMasked: string;
+  role: string;
+  scopePreview: {
+    eventName: string;
+  };
+  expiresAt: string;
+  eventImage: string;
+  eventStartDate: string;
+}
 
 export interface EventsResponse {
   items: Event[];
+  page: number;
+  pageSize: number;
+  total: number;
+}
+
+export interface PendingEventsResponse {
+  items: PendingEvent[];
   page: number;
   pageSize: number;
   total: number;
@@ -131,4 +149,11 @@ export interface ScanVerifyResponse {
     scanned: number;
     total: number;
   };
+}
+
+export interface AcceptInviteResponse {
+  userId: string;
+  email: string;
+  roleAttached: string;
+  acceptedAt: string;
 }
