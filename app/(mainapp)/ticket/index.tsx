@@ -162,6 +162,7 @@ export default TicketScanner;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#fff",
   },
   scrollView: {
     position: "relative",

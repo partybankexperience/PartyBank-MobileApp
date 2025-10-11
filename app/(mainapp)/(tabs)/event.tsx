@@ -176,6 +176,7 @@ export default function EventTab() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#fff",
   },
   tab: {
     flex: 1,

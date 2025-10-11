@@ -85,6 +85,7 @@ const NotificationItem = ({ title, message, time }: NotificationItemProps) => (
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#fff",
   },
   contentContainer: {
     paddingHorizontal: 12,
