@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "PartyBank-MobileApp",
+    "name": "Partybank",
     "slug": "PartyBank-MobileApp",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/icon/appicon.png",
     "scheme": "partybankmobileapp",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
@@ -18,10 +18,15 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./assets/icon/appicon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "package": "com.chaos12.PartyBankMobileApp"
     },
     "web": {
       "bundler": "metro",
@@ -43,6 +48,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "28e0f69c-39f0-4516-bac6-5b399ccbf67b"
+      }
     }
   }
 }
