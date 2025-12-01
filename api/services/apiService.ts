@@ -139,7 +139,6 @@ export const inviteApi = {
     const response = await api.post(`/invites/${inviteId}/accept`);
 
     const data = await response.data;
-    console.log("This is the data", data);
 
     if (!response.data) {
       throw new Error(data.message || "Failed to accept invite");

@@ -41,9 +41,9 @@ export default function RootLayout() {
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
+      <StatusBar style="dark" backgroundColor="#fff" />
       <QueryClientProvider client={queryClient}>
         <ToastProvider>
-          <StatusBar style="dark" backgroundColor="#fff" />
           <Slot />
         </ToastProvider>
       </QueryClientProvider>

@@ -135,7 +135,7 @@ export default function TabOneScreen() {
     }
 
     if (scannedData === lastScannedCode && isVerifying) {
-      console.log("Duplicate scan detected, skipping...");
+      // console.log("Duplicate scan detected, skipping...");
       return;
     }
 
@@ -162,10 +162,10 @@ export default function TabOneScreen() {
         signature: parsedData.signature || "manual_scan_no_signature",
       };
 
-      console.log("Sending verification request:", requestData);
+      // console.log("Sending verification request:", requestData);
 
       const result = await scanVerifyMutation.mutateAsync(requestData);
-      console.log("Verification result:", result);
+      // console.log("Verification result:", result);
 
       const resultConfig = getResultConfig(result.outcome);
 
@@ -202,13 +202,11 @@ export default function TabOneScreen() {
 
   const handleScan = ({ data }: { data: string }) => {
     if (isVerifying || data === lastScannedCode) {
-      console.log("Scan ignored - already verifying or duplicate code");
       return;
     }
 
     setScannedData(data);
     setIsScanning(false);
-    console.log("Scanned QR Code Data:", data);
     verifyScannedCode(data);
   };
 
@@ -252,14 +250,14 @@ export default function TabOneScreen() {
 
   const handleScanAlternative = ({ data }: { data: string }) => {
     if (isProcessingScanRef.current) {
-      console.log("Scan already in progress, ignoring...");
+      // console.log("Scan already in progress, ignoring...");
       return;
     }
 
     isProcessingScanRef.current = true;
     setScannedData(data);
     setIsScanning(false);
-    console.log("Scanned QR Code Data:", data);
+    // console.log("Scanned QR Code Data:", data);
     verifyScannedCode(data).finally(() => {
       isProcessingScanRef.current = false;
     });

@@ -193,6 +193,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.border,
     borderBottomWidth: 1,
     borderBottomColor: Colors.light.primary,
+    borderRightColor: Colors.light.border,
+    borderLeftColor: Colors.light.border,
   },
   tabText: {
     fontSize: 14,

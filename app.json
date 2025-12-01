@@ -9,7 +9,7 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/splash-icon.png",
+      "image": "./assets/icon/appicon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -23,6 +23,8 @@
       },
       "edgeToEdgeEnabled": true,
       "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO"
       ],
@@ -44,7 +46,8 @@
           "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone",
           "recordAudioAndroid": true
         }
-      ]
+      ],
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true
@@ -54,6 +57,12 @@
       "eas": {
         "projectId": "28e0f69c-39f0-4516-bac6-5b399ccbf67b"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/28e0f69c-39f0-4516-bac6-5b399ccbf67b"
     }
   }
 }
