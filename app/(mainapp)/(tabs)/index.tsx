@@ -4,31 +4,21 @@ import {
   StyleSheet,
   View,
   TouchableOpacity,
-  FlatList,
   Alert,
   ActivityIndicator,
-  RefreshControl,
+  Linking,
   Dimensions,
-  Modal,
 } from "react-native";
-import {
-  AntDesign,
-  FontAwesome,
-  MaterialIcons,
-  Ionicons,
-} from "@expo/vector-icons";
+import { FontAwesome, MaterialIcons, Ionicons } from "@expo/vector-icons";
 import CustomText from "@/shared/text/CustomText";
 import Topbar from "@/shared/Topbar/topbar";
 import Colors from "@/constants/Colors";
-import { useEvents } from "@/api/services/hooks/useEvents";
 import { useScanVerify } from "@/api/services/hooks/useScan";
 import { useToast } from "@/shared/toast/ToastContext";
-
-const { height: screenHeight } = Dimensions.get("window");
+import { EventDropdown } from "../component/event/EventDropdown";
 
 export default function TabOneScreen() {
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
-  const [isOpen, setIsOpen] = useState(false);
   const [scannedData, setScannedData] = useState("");
   const [permission, requestPermission] = useCameraPermissions();
   const [isScanning, setIsScanning] = useState(false);
@@ -40,48 +30,45 @@ export default function TabOneScreen() {
     data?: any;
   } | null>(null);
   const cameraRef = useRef(null);
-  const flatListRef = useRef<FlatList>(null);
-  const [modalVisible, setModalVisible] = useState(false);
   const [lastScannedCode, setLastScannedCode] = useState<string>("");
+  const [isRequestingPermission, setIsRequestingPermission] = useState(false);
 
   const { showToast } = useToast();
-  const {
-    data,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useEvents();
-
   const scanVerifyMutation = useScanVerify();
 
-  // Flatten all events from all pages
-  const allEvents = data?.pages.flatMap((page) => page.items) || [];
+  // Auto-request camera permission when component loads
+  useEffect(() => {
+    const requestCameraPermission = async () => {
+      if (!permission) return;
+
+      if (
+        !permission.granted &&
+        permission.canAskAgain &&
+        !isRequestingPermission
+      ) {
+        setIsRequestingPermission(true);
+        try {
+          await requestPermission();
+        } catch (error) {
+          console.error("Error requesting camera permission:", error);
+        } finally {
+          setIsRequestingPermission(false);
+        }
+      }
+    };
+
+    requestCameraPermission();
+  }, [permission, isRequestingPermission]);
 
   // Check camera permission status
   useEffect(() => {
     if (permission && !permission.granted && !permission.canAskAgain) {
-      Alert.alert(
-        "Camera Permission Required",
-        "Please enable camera permissions in your device settings to use the QR scanner.",
-        [{ text: "OK" }]
-      );
+      console.log("Camera permission permanently denied");
     }
   }, [permission]);
 
-  // Set first event as selected when data loads
-  useEffect(() => {
-    if (allEvents.length > 0 && !selectedEvent) {
-      setSelectedEvent(allEvents[0]);
-    }
-  }, [allEvents, selectedEvent]);
-
-  const handleSelect = (event: any) => {
+  const handleSelectEvent = (event: any) => {
     setSelectedEvent(event);
-    setModalVisible(false);
     setScanResult(null);
     setScannedData("");
     setLastScannedCode("");
@@ -135,7 +122,6 @@ export default function TabOneScreen() {
     }
 
     if (scannedData === lastScannedCode && isVerifying) {
-      // console.log("Duplicate scan detected, skipping...");
       return;
     }
 
@@ -162,11 +148,7 @@ export default function TabOneScreen() {
         signature: parsedData.signature || "manual_scan_no_signature",
       };
 
-      // console.log("Sending verification request:", requestData);
-
       const result = await scanVerifyMutation.mutateAsync(requestData);
-      // console.log("Verification result:", result);
-
       const resultConfig = getResultConfig(result.outcome);
 
       setScanResult({
@@ -210,6 +192,41 @@ export default function TabOneScreen() {
     verifyScannedCode(data);
   };
 
+  const handleRequestPermission = async () => {
+    if (!permission?.canAskAgain) {
+      // Guide user to app settings
+      Alert.alert(
+        "Permission Required",
+        "Camera permission has been permanently denied. Please enable it in your device settings.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Open Settings",
+            onPress: () => {
+              Linking.openSettings();
+            },
+          },
+        ]
+      );
+      return;
+    }
+
+    setIsRequestingPermission(true);
+    try {
+      const permissionResponse = await requestPermission();
+      if (permissionResponse.granted) {
+        showToast("Camera permission granted", "success");
+      } else {
+        showToast("Camera permission denied", "error");
+      }
+    } catch (error) {
+      console.error("Error requesting camera permission:", error);
+      showToast("Failed to request camera permission", "error");
+    } finally {
+      setIsRequestingPermission(false);
+    }
+  };
+
   const startScanning = async () => {
     if (!selectedEvent) {
       showToast("Please select an event first", "error");
@@ -224,95 +241,23 @@ export default function TabOneScreen() {
       return;
     }
 
-    try {
-      const permissionResponse = await requestPermission();
-      if (permissionResponse.granted) {
-        setIsScanning(true);
-        setScannedData("");
-        setScanResult(null);
-        setLastScannedCode("");
-      } else {
-        Alert.alert(
-          "Permission Denied",
-          "Camera permission is required to scan QR codes.",
-          [{ text: "OK" }]
-        );
-      }
-    } catch (error) {
-      console.error("Error requesting camera permission:", error);
-      Alert.alert("Error", "Failed to access camera. Please try again.", [
-        { text: "OK" },
-      ]);
-    }
+    // If we don't have permission, request it
+    await handleRequestPermission();
   };
 
   const isProcessingScanRef = useRef(false);
 
   const handleScanAlternative = ({ data }: { data: string }) => {
     if (isProcessingScanRef.current) {
-      // console.log("Scan already in progress, ignoring...");
       return;
     }
 
     isProcessingScanRef.current = true;
     setScannedData(data);
     setIsScanning(false);
-    // console.log("Scanned QR Code Data:", data);
     verifyScannedCode(data).finally(() => {
       isProcessingScanRef.current = false;
     });
-  };
-
-  const loadMoreEvents = () => {
-    if (hasNextPage && !isFetchingNextPage) {
-      fetchNextPage();
-    }
-  };
-
-  const renderFooter = () => {
-    if (!isFetchingNextPage) return null;
-
-    return (
-      <View style={styles.footerLoader}>
-        <ActivityIndicator size="small" color={Colors.light.primary} />
-        <CustomText style={styles.loadingText}>
-          Loading more events...
-        </CustomText>
-      </View>
-    );
-  };
-
-  const renderEmpty = () => {
-    if (isLoading) {
-      return (
-        <View style={styles.emptyState}>
-          <ActivityIndicator size="large" color={Colors.light.primary} />
-          <CustomText style={styles.emptyText}>Loading events...</CustomText>
-        </View>
-      );
-    }
-
-    if (isError) {
-      return (
-        <View style={styles.emptyState}>
-          <CustomText style={styles.errorText}>
-            {error?.message || "Failed to load events"}
-          </CustomText>
-          <TouchableOpacity
-            style={styles.retryButton}
-            onPress={() => refetch()}
-          >
-            <CustomText style={styles.retryButtonText}>Try Again</CustomText>
-          </TouchableOpacity>
-        </View>
-      );
-    }
-
-    return (
-      <View style={styles.emptyState}>
-        <CustomText style={styles.emptyText}>No events available</CustomText>
-      </View>
-    );
   };
 
   // Show loading while checking permissions
@@ -321,104 +266,86 @@ export default function TabOneScreen() {
       <View style={styles.container}>
         <Topbar>Ticket Scanning</Topbar>
         <View style={styles.centerContent}>
-          <CustomText>Checking camera permissions...</CustomText>
-        </View>
-      </View>
-    );
-  }
-
-  // Show permission denied message if we can't ask again
-  if (!permission.granted && !permission.canAskAgain) {
-    return (
-      <View style={styles.container}>
-        <Topbar>Ticket Scanning</Topbar>
-        <View style={styles.centerContent}>
+          <ActivityIndicator size="large" color={Colors.light.primary} />
           <CustomText style={styles.permissionText}>
-            Camera permission is required to scan QR codes. Please enable it in
-            your device settings.
+            Checking camera permissions...
           </CustomText>
         </View>
       </View>
     );
   }
 
+  // Show permission UI if permission denied
+  const showPermissionUI = !permission.granted;
+
   return (
     <View style={styles.container}>
       <Topbar>Ticket Scanning</Topbar>
       <View style={{ paddingHorizontal: 16, flex: 1 }}>
-        <CustomText style={styles.label}>Select Event</CustomText>
+        <View style={{ marginBottom: 20, width: "100%" }}>
+          <CustomText style={styles.label}>Select Event</CustomText>
 
-        {/* Dropdown Container */}
-        <View style={styles.dropdownContainer}>
-          <>
-            <TouchableOpacity
-              style={styles.dropdown}
-              onPress={() => setModalVisible(true)}
-              activeOpacity={0.7}
-              disabled={isLoading || isError}
-            >
-              <CustomText style={styles.selectedText}>
-                {selectedEvent?.name ||
-                  (isLoading ? "Loading events..." : "Select an event")}
-              </CustomText>
-              <AntDesign name="down" size={20} color="#333" />
-            </TouchableOpacity>
-
-            <Modal
-              visible={modalVisible}
-              animationType="slide"
-              transparent={true}
-              onRequestClose={() => setModalVisible(false)}
-            >
-              <View style={styles.modalOverlay}>
-                <View style={styles.modalContainer}>
-                  <View style={styles.modalHeader}>
-                    <CustomText style={styles.modalTitle}>
-                      Select Event
-                    </CustomText>
-                    <TouchableOpacity
-                      onPress={() => setModalVisible(false)}
-                      style={styles.closeButton}
-                    >
-                      <AntDesign name="close" size={24} color="#333" />
-                    </TouchableOpacity>
-                  </View>
-
-                  <FlatList
-                    data={allEvents}
-                    keyExtractor={(item) => item.id}
-                    renderItem={({ item }) => (
-                      <TouchableOpacity
-                        style={styles.modalOption}
-                        onPress={() => handleSelect(item)}
-                      >
-                        <CustomText style={styles.optionText}>
-                          {item.name}
-                        </CustomText>
-                      </TouchableOpacity>
-                    )}
-                    ListEmptyComponent={renderEmpty}
-                    ListFooterComponent={renderFooter}
-                    onEndReached={loadMoreEvents}
-                    onEndReachedThreshold={0.5}
-                    refreshControl={
-                      <RefreshControl
-                        refreshing={isLoading && !isFetchingNextPage}
-                        onRefresh={refetch}
-                        colors={[Colors.light.primary]}
-                      />
-                    }
-                    style={styles.modalFlatList}
-                    contentContainerStyle={styles.modalContentContainer}
-                  />
-                </View>
-              </View>
-            </Modal>
-          </>
+          {/* Use the new EventDropdown component */}
+          <EventDropdown
+            selectedEvent={selectedEvent}
+            onSelectEvent={handleSelectEvent}
+            placeholder="Select an event"
+          />
         </View>
 
         <View style={styles.scanContainer}>
-          {isScanning && permission.granted ? (
+          {/* Camera Permission Denied UI */}
+          {showPermissionUI ? (
+            <View style={styles.permissionDeniedContainer}>
+              <MaterialIcons
+                name="no-photography"
+                size={100}
+                color={Colors.light.primary}
+              />
+              <CustomText style={styles.permissionDeniedTitle}>
+                Camera Access Required
+              </CustomText>
+              <CustomText style={styles.permissionDeniedText}>
+                {permission.canAskAgain
+                  ? "You need to grant camera permission to scan QR codes."
+                  : "Camera permission has been permanently denied. Please enable it in your device settings."}
+              </CustomText>
+
+              {permission.canAskAgain ? (
+                <TouchableOpacity
+                  style={styles.permissionButton}
+                  onPress={handleRequestPermission}
+                  disabled={isRequestingPermission}
+                >
+                  {isRequestingPermission ? (
+                    <ActivityIndicator
+                      color={Colors.light.white}
+                      size="small"
+                    />
+                  ) : (
+                    <CustomText style={styles.permissionButtonText}>
+                      Grant Camera Permission
+                    </CustomText>
+                  )}
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={styles.permissionButton}
+                  onPress={() => {
+                    Alert.alert(
+                      "Open Settings",
+                      "Please go to your device settings to enable camera permission for this app.",
+                      [{ text: "OK" }]
+                    );
+                  }}
+                >
+                  <CustomText style={styles.permissionButtonText}>
+                    Open Settings
+                  </CustomText>
+                </TouchableOpacity>
+              )}
+            </View>
+          ) : isScanning && permission.granted ? (
             <View style={styles.cameraWrapper}>
               <View style={styles.cameraContainer}>
                 <CameraView
@@ -473,33 +400,34 @@ export default function TabOneScreen() {
             </View>
           )}
 
-          {!isScanning ? (
-            <TouchableOpacity
-              style={[
-                styles.actionButton,
-                (!permission.granted || !selectedEvent) &&
-                  styles.disabledButton,
-              ]}
-              onPress={startScanning}
-              disabled={
-                (!permission.granted && !permission.canAskAgain) ||
-                !selectedEvent
-              }
-            >
-              <CustomText style={styles.actionButtonText}>
-                {scannedData ? "Scan Again" : "Start Scanning"}
-              </CustomText>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={[styles.actionButton, styles.stopButton]}
-              onPress={() => setIsScanning(false)}
-              disabled={isVerifying}
-            >
-              <CustomText style={styles.actionButtonText}>
-                {isVerifying ? "Verifying..." : "Stop Scanning"}
-              </CustomText>
-            </TouchableOpacity>
+          {/* Action Buttons */}
+          {!showPermissionUI && (
+            <>
+              {!isScanning ? (
+                <TouchableOpacity
+                  style={[
+                    styles.actionButton,
+                    !selectedEvent && styles.disabledButton,
+                  ]}
+                  onPress={startScanning}
+                  disabled={!selectedEvent}
+                >
+                  <CustomText style={styles.actionButtonText}>
+                    {scannedData ? "Scan Again" : "Start Scanning"}
+                  </CustomText>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.stopButton]}
+                  onPress={() => setIsScanning(false)}
+                  disabled={isVerifying}
+                >
+                  <CustomText style={styles.actionButtonText}>
+                    {isVerifying ? "Verifying..." : "Stop Scanning"}
+                  </CustomText>
+                </TouchableOpacity>
+              )}
+            </>
           )}
 
           {/* Scan Result Display */}
@@ -528,40 +456,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 20,
   },
-  dropdownContainer: {
-    zIndex: 1000,
-    marginBottom: 12,
-  },
   label: {
     fontSize: 16,
     fontWeight: "600",
     marginBottom: 8,
-  },
-  dropdown: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 14,
-    backgroundColor: Colors.light.grey100,
-  },
-  selectedText: {
-    fontSize: 16,
-    color: "#333",
-    flex: 1,
-  },
-  optionText: {
-    fontSize: 16,
-    color: "#333",
-    fontWeight: "600",
-  },
-  eventDate: {
-    fontSize: 12,
-    color: Colors.light.text2,
-    marginTop: 4,
   },
   scanContainer: {
     flex: 1,
@@ -660,6 +558,46 @@ const styles = StyleSheet.create({
     color: Colors.light.baseblack,
     textAlign: "center",
   },
+  permissionDeniedContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    height: 300,
+    width: "100%",
+    backgroundColor: Colors.light.grey100,
+    borderRadius: 10,
+    marginBottom: 25,
+    padding: 20,
+    borderWidth: 2,
+    borderColor: Colors.light.grey,
+  },
+  permissionDeniedTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: Colors.light.primary,
+    marginTop: 15,
+    marginBottom: 10,
+    textAlign: "center",
+  },
+  permissionDeniedText: {
+    fontSize: 16,
+    color: Colors.light.text2,
+    textAlign: "center",
+    marginBottom: 20,
+    lineHeight: 22,
+  },
+  permissionButton: {
+    backgroundColor: Colors.light.primary,
+    paddingVertical: 15,
+    paddingHorizontal: 30,
+    borderRadius: 10,
+    width: "100%",
+    alignItems: "center",
+  },
+  permissionButtonText: {
+    color: Colors.light.white,
+    fontSize: 16,
+    fontWeight: "bold",
+  },
   resultContainer: {
     marginTop: 15,
     padding: 20,
@@ -703,6 +641,7 @@ const styles = StyleSheet.create({
     color: Colors.light.baseblack,
     textAlign: "center",
     lineHeight: 24,
+    marginTop: 10,
   },
   permissionHint: {
     marginTop: 10,
@@ -730,85 +669,5 @@ const styles = StyleSheet.create({
     color: Colors.light.white,
     fontSize: 16,
     fontWeight: "bold",
-  },
-  footerLoader: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 16,
-  },
-  loadingText: {
-    marginLeft: 8,
-    fontSize: 14,
-    color: Colors.light.text2,
-  },
-  emptyState: {
-    padding: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: 120,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: Colors.light.text2,
-    textAlign: "center",
-    marginTop: 8,
-  },
-  errorText: {
-    fontSize: 14,
-    color: Colors.light.primary,
-    textAlign: "center",
-    marginBottom: 12,
-  },
-  retryButton: {
-    backgroundColor: Colors.light.primary,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
-  },
-  retryButtonText: {
-    color: Colors.light.white,
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "flex-end",
-  },
-  modalContainer: {
-    height: screenHeight * 0.5,
-    backgroundColor: Colors.light.white,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    overflow: "hidden",
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.grey,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-  closeButton: {
-    padding: 4,
-  },
-  modalOption: {
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.grey,
-  },
-  modalFlatList: {
-    flex: 1,
-  },
-  modalContentContainer: {
-    flexGrow: 1,
   },
 });
