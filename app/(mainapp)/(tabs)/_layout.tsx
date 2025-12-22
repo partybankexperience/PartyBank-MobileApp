@@ -13,25 +13,29 @@ export default function TabLayout() {
           tabBarActiveTintColor: Colors.light.primary,
           tabBarInactiveTintColor: "#959595",
           tabBarIconStyle: {
-            // marginTop: 8,
+            marginTop: 4,
           },
 
           tabBarStyle: {
-            height: 62,
+            height: 70,
             marginBottom: 0,
+            paddingBottom: 8,
+            paddingTop: 8,
             backgroundColor: Colors.light.baseblack,
           },
           tabBarLabelStyle: {
-            fontSize: 12,
+            fontSize: 11,
             fontFamily: "RedHatDisplay-Bold",
+            marginBottom: 4,
           },
+
           headerShown: false,
         }}
       >
         <Tabs.Screen
           name="index"
           options={{
-            title: "SCAN",
+            title: "Scan",
             tabBarIcon: ({ color }) => <ScannerIcon fill={color} />,
           }}
         />
