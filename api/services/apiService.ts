@@ -21,6 +21,7 @@ export const authApi = {
     const response = await api.post("/auth/login", credentials);
 
     const data = await response.data;
+    console.log(data);
 
     if (!data) {
       throw new Error(data.message || "Login failed");
