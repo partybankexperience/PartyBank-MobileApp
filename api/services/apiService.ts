@@ -156,15 +156,26 @@ export const tokenService = {
     // Verify token was stored
     const storedToken = await StorageService.getItem("accessToken");
   },
-  
+
+  setRefreshTokens: async (refreshToken: string): Promise<void> => {
+    await StorageService.setItem("refreshToken", refreshToken);
+
+    // Verify token was stored
+    const storedToken = await StorageService.getItem("refreshToken");
+  },
 
   clearTokens: async (): Promise<void> => {
     await StorageService.removeItem("accessToken");
     await StorageService.removeItem("tokenTimestamp");
+    await StorageService.removeItem("refreshToken");
   },
 
   getAccessToken: async (): Promise<string | null> => {
     return await StorageService.getItem("accessToken");
+  },
+
+  getRefreshToken: async (): Promise<string | null> => {
+    return await StorageService.getItem("refreshToken");
   },
 
   // Helper to check if we have a token
@@ -174,7 +185,6 @@ export const tokenService = {
 
     if (!token || !timestamp) return false;
 
-    // Check if token is expired (1 day = 24 hours)
     const oneDayInMs = 24 * 60 * 60 * 1000;
     const tokenTime = parseInt(timestamp);
     const currentTime = Date.now();

@@ -22,7 +22,8 @@ export const useLogin = () => {
     mutationFn: authApi.login,
     onSuccess: async (data) => {
       // Extract the accessToken from the response
-      const { accessToken } = data;
+      
+      const { accessToken, refreshToken } = data;
 
       if (!accessToken) {
         throw new Error("No access token received");
@@ -31,6 +32,8 @@ export const useLogin = () => {
       // Store the token and timestamp
       await tokenService.setTokens(accessToken);
 
+      // Store the refresh token
+      await tokenService.setRefreshTokens(refreshToken)
       // Verify token was stored
       const storedToken = await tokenService.getAccessToken();
 
