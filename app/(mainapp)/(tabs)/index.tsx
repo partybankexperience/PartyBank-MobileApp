@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect, useCallback, JSX } from "react";
-import { CameraView, useCameraPermissions } from "expo-camera";
+import { CameraView, useCameraPermissions, CameraType } from "expo-camera";
 import {
   StyleSheet,
   View,
@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Linking,
   Dimensions,
+  Platform,
 } from "react-native";
 import { FontAwesome, MaterialIcons, Ionicons } from "@expo/vector-icons";
 import CustomText from "@/shared/text/CustomText";
@@ -29,9 +30,11 @@ export default function TabOneScreen() {
     icon: JSX.Element;
     data?: any;
   } | null>(null);
-  const cameraRef = useRef(null);
+  const cameraRef = useRef<CameraView>(null);
   const [lastScannedCode, setLastScannedCode] = useState<string>("");
   const [isRequestingPermission, setIsRequestingPermission] = useState(false);
+  const [cameraType, setCameraType] = useState<CameraType>("back");
+  const [isCameraReady, setIsCameraReady] = useState(false);
 
   const { showToast } = useToast();
   const scanVerifyMutation = useScanVerify();
@@ -66,6 +69,15 @@ export default function TabOneScreen() {
       console.log("Camera permission permanently denied");
     }
   }, [permission]);
+
+  // Clean up camera when component unmounts or scanning stops
+  useEffect(() => {
+    return () => {
+      // Clean up camera resources
+      setIsScanning(false);
+      setIsCameraReady(false);
+    };
+  }, []);
 
   const handleSelectEvent = (event: any) => {
     setSelectedEvent(event);
@@ -182,15 +194,18 @@ export default function TabOneScreen() {
     }
   };
 
-  const handleScan = ({ data }: { data: string }) => {
-    if (isVerifying || data === lastScannedCode) {
-      return;
-    }
+  const handleScan = useCallback(
+    ({ data }: { data: string }) => {
+      if (isVerifying || data === lastScannedCode) {
+        return;
+      }
 
-    setScannedData(data);
-    setIsScanning(false);
-    verifyScannedCode(data);
-  };
+      setScannedData(data);
+      setIsScanning(false);
+      verifyScannedCode(data);
+    },
+    [isVerifying, lastScannedCode]
+  );
 
   const handleRequestPermission = async () => {
     if (!permission?.canAskAgain) {
@@ -235,6 +250,7 @@ export default function TabOneScreen() {
 
     if (permission?.granted) {
       setIsScanning(true);
+      setIsCameraReady(false); // Reset camera ready state
       setScannedData("");
       setScanResult(null);
       setLastScannedCode("");
@@ -247,18 +263,67 @@ export default function TabOneScreen() {
 
   const isProcessingScanRef = useRef(false);
 
-  const handleScanAlternative = ({ data }: { data: string }) => {
-    if (isProcessingScanRef.current) {
-      return;
+  const handleScanAlternative = useCallback(
+    ({ data }: { data: string }) => {
+      if (isProcessingScanRef.current || !isCameraReady) {
+        return;
+      }
+
+      isProcessingScanRef.current = true;
+      setScannedData(data);
+      setIsScanning(false);
+      setIsCameraReady(false);
+
+      verifyScannedCode(data).finally(() => {
+        isProcessingScanRef.current = false;
+      });
+    },
+    [isCameraReady]
+  );
+
+  // Handle camera ready event
+  const handleCameraReady = useCallback(() => {
+    // console.log("Camera is ready");
+    setIsCameraReady(true);
+  }, []);
+
+  // Handle camera mount error
+  const handleCameraMountError = useCallback((error: any) => {
+    console.error("Camera mount error:", error);
+    Alert.alert(
+      "Camera Error",
+      "Unable to start camera. Please try again or restart the app.",
+      [{ text: "OK" }]
+    );
+    setIsScanning(false);
+    setIsCameraReady(false);
+  }, []);
+
+  // Handle iPad-specific camera issues
+  const handleCameraError = useCallback((error: any) => {
+    console.error("Camera error:", error);
+
+    if (Platform.OS === "ios") {
+      // For iOS/iPadOS, show a specific message
+      Alert.alert(
+        "Camera Unavailable",
+        "The camera is currently unavailable. Please try again or check if another app is using the camera.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Try Again",
+            onPress: () => {
+              setIsScanning(false);
+              setTimeout(() => setIsScanning(true), 500); // Small delay before retry
+            },
+          },
+        ]
+      );
     }
 
-    isProcessingScanRef.current = true;
-    setScannedData(data);
     setIsScanning(false);
-    verifyScannedCode(data).finally(() => {
-      isProcessingScanRef.current = false;
-    });
-  };
+    setIsCameraReady(false);
+  }, []);
 
   // Show loading while checking permissions
   if (!permission) {
@@ -351,14 +416,21 @@ export default function TabOneScreen() {
                 <CameraView
                   style={styles.camera}
                   ref={cameraRef}
+                  onCameraReady={handleCameraReady}
+                  onMountError={handleCameraMountError}
+                  onError={handleCameraError}
                   onBarcodeScanned={
-                    scannedData || isVerifying
+                    scannedData || isVerifying || !isCameraReady
                       ? undefined
                       : handleScanAlternative
                   }
                   barcodeScannerSettings={{
                     barcodeTypes: ["qr"],
                   }}
+                  facing={cameraType}
+                  responsiveOrientationWhenOrientationLocked
+                  // Add iPad-specific optimizations
+                  ratio={Platform.OS === "ios" ? "16:9" : undefined}
                 />
                 <View style={styles.scanFrame}>
                   <View style={[styles.corner, styles.cornerTopLeft]} />
@@ -366,6 +438,19 @@ export default function TabOneScreen() {
                   <View style={[styles.corner, styles.cornerBottomLeft]} />
                   <View style={[styles.corner, styles.cornerBottomRight]} />
                 </View>
+
+                {/* Camera Ready Indicator */}
+                {!isCameraReady && !isVerifying && (
+                  <View style={styles.cameraLoadingOverlay}>
+                    <ActivityIndicator
+                      size="large"
+                      color={Colors.light.white}
+                    />
+                    <CustomText style={styles.cameraLoadingText}>
+                      Initializing Camera...
+                    </CustomText>
+                  </View>
+                )}
 
                 {/* Verification Overlay */}
                 {isVerifying && (
@@ -419,7 +504,10 @@ export default function TabOneScreen() {
               ) : (
                 <TouchableOpacity
                   style={[styles.actionButton, styles.stopButton]}
-                  onPress={() => setIsScanning(false)}
+                  onPress={() => {
+                    setIsScanning(false);
+                    setIsCameraReady(false);
+                  }}
                   disabled={isVerifying}
                 >
                   <CustomText style={styles.actionButtonText}>
@@ -489,6 +577,7 @@ const styles = StyleSheet.create({
     width: 200,
     height: 200,
     borderRadius: 10,
+    zIndex: 1,
   },
   corner: {
     position: "absolute",
@@ -524,6 +613,23 @@ const styles = StyleSheet.create({
     borderRightWidth: 4,
     borderBottomRightRadius: 10,
   },
+  cameraLoadingOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 0,
+  },
+  cameraLoadingText: {
+    color: Colors.light.white,
+    fontSize: 16,
+    marginTop: 10,
+    fontWeight: "600",
+  },
   verificationOverlay: {
     position: "absolute",
     top: 0,
@@ -533,6 +639,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0.7)",
     justifyContent: "center",
     alignItems: "center",
+    zIndex: 2,
   },
   verificationText: {
     color: Colors.light.white,
