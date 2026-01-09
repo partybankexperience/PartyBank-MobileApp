@@ -39,41 +39,8 @@ export default function TabOneScreen() {
   const { showToast } = useToast();
   const scanVerifyMutation = useScanVerify();
 
-  // Auto-request camera permission when component loads
-  useEffect(() => {
-    const requestCameraPermission = async () => {
-      if (!permission) return;
-
-      if (
-        !permission.granted &&
-        permission.canAskAgain &&
-        !isRequestingPermission
-      ) {
-        setIsRequestingPermission(true);
-        try {
-          await requestPermission();
-        } catch (error) {
-          console.error("Error requesting camera permission:", error);
-        } finally {
-          setIsRequestingPermission(false);
-        }
-      }
-    };
-
-    requestCameraPermission();
-  }, [permission, isRequestingPermission]);
-
-  // Check camera permission status
-  useEffect(() => {
-    if (permission && !permission.granted && !permission.canAskAgain) {
-      console.log("Camera permission permanently denied");
-    }
-  }, [permission]);
-
-  // Clean up camera when component unmounts or scanning stops
   useEffect(() => {
     return () => {
-      // Clean up camera resources
       setIsScanning(false);
       setIsCameraReady(false);
     };
@@ -243,22 +210,32 @@ export default function TabOneScreen() {
   };
 
   const startScanning = async () => {
+    // Check if event is selected before proceeding
     if (!selectedEvent) {
       showToast("Please select an event first", "error");
       return;
     }
 
-    if (permission?.granted) {
+    // Check camera permission
+    if (!permission) {
+      showToast("Checking camera permissions...", "info");
+      return;
+    }
+
+    if (!permission.granted) {
+      // Request permission first
+      await handleRequestPermission();
+      return;
+    }
+
+    // If we have permission, start scanning
+    if (permission.granted) {
       setIsScanning(true);
       setIsCameraReady(false); // Reset camera ready state
       setScannedData("");
       setScanResult(null);
       setLastScannedCode("");
-      return;
     }
-
-    // If we don't have permission, request it
-    await handleRequestPermission();
   };
 
   const isProcessingScanRef = useRef(false);
@@ -283,7 +260,6 @@ export default function TabOneScreen() {
 
   // Handle camera ready event
   const handleCameraReady = useCallback(() => {
-    // console.log("Camera is ready");
     setIsCameraReady(true);
   }, []);
 
@@ -341,7 +317,7 @@ export default function TabOneScreen() {
   }
 
   // Show permission UI if permission denied
-  const showPermissionUI = !permission.granted;
+  const showPermissionUI = !permission.granted && isScanning;
 
   return (
     <View style={styles.container}>
@@ -359,7 +335,7 @@ export default function TabOneScreen() {
         </View>
 
         <View style={styles.scanContainer}>
-          {/* Camera Permission Denied UI */}
+          {/* Camera Permission Denied UI - Only show when scanning */}
           {showPermissionUI ? (
             <View style={styles.permissionDeniedContainer}>
               <MaterialIcons
@@ -476,12 +452,6 @@ export default function TabOneScreen() {
               <CustomText style={styles.placeholderText}>
                 {scannedData ? "Scan complete!" : "Ready to scan QR codes"}
               </CustomText>
-
-              {!permission.granted && (
-                <CustomText style={styles.permissionHint}>
-                  Camera permission required
-                </CustomText>
-              )}
             </View>
           )}
 
@@ -490,12 +460,8 @@ export default function TabOneScreen() {
             <>
               {!isScanning ? (
                 <TouchableOpacity
-                  style={[
-                    styles.actionButton,
-                    !selectedEvent && styles.disabledButton,
-                  ]}
+                  style={styles.actionButton}
                   onPress={startScanning}
-                  disabled={!selectedEvent}
                 >
                   <CustomText style={styles.actionButtonText}>
                     {scannedData ? "Scan Again" : "Start Scanning"}
