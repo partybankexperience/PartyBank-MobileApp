@@ -219,7 +219,12 @@ export default function TabOneScreen() {
    if (hasCameraPermission === null) {
      await handleRequestPermission();
      return;
-   }
+    }
+    
+      if (hasCameraPermission === false) {
+        setShowPermissionUI(true);
+        return;
+      }
 
 
     // If we have permission, start scanning
