@@ -48,6 +48,11 @@ export default function TabOneScreen() {
     };
   }, []);
 
+  useEffect(() => {
+    setHasCameraPermission(null);
+  }, []);
+
+
   const handleSelectEvent = (event: any) => {
     setSelectedEvent(event);
     setScanResult(null);
