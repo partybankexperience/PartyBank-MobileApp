@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect, useCallback, JSX } from "react";
-import { CameraView, useCameraPermissions, CameraType } from "expo-camera";
+import { CameraView, Camera, CameraType } from "expo-camera";
 import {
   StyleSheet,
   View,
@@ -7,7 +7,6 @@ import {
   Alert,
   ActivityIndicator,
   Linking,
-  Dimensions,
   Platform,
 } from "react-native";
 import { FontAwesome, MaterialIcons, Ionicons } from "@expo/vector-icons";
@@ -21,7 +20,6 @@ import { EventDropdown } from "../component/event/EventDropdown";
 export default function TabOneScreen() {
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [scannedData, setScannedData] = useState("");
-  const [permission, requestPermission] = useCameraPermissions();
   const [isScanning, setIsScanning] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [scanResult, setScanResult] = useState<{
@@ -35,6 +33,10 @@ export default function TabOneScreen() {
   const [isRequestingPermission, setIsRequestingPermission] = useState(false);
   const [cameraType, setCameraType] = useState<CameraType>("back");
   const [isCameraReady, setIsCameraReady] = useState(false);
+  const [hasCameraPermission, setHasCameraPermission] = useState<
+    boolean | null
+  >(null);
+  const [showPermissionUI, setShowPermissionUI] = useState(false);
 
   const { showToast } = useToast();
   const scanVerifyMutation = useScanVerify();
@@ -45,6 +47,11 @@ export default function TabOneScreen() {
       setIsCameraReady(false);
     };
   }, []);
+
+  useEffect(() => {
+    setHasCameraPermission(null);
+  }, []);
+
 
   const handleSelectEvent = (event: any) => {
     setSelectedEvent(event);
@@ -161,49 +168,46 @@ export default function TabOneScreen() {
     }
   };
 
-  const handleScan = useCallback(
-    ({ data }: { data: string }) => {
-      if (isVerifying || data === lastScannedCode) {
-        return;
-      }
-
-      setScannedData(data);
-      setIsScanning(false);
-      verifyScannedCode(data);
-    },
-    [isVerifying, lastScannedCode]
-  );
-
   const handleRequestPermission = async () => {
-    if (!permission?.canAskAgain) {
-      // Guide user to app settings
-      Alert.alert(
-        "Permission Required",
-        "Camera permission has been permanently denied. Please enable it in your device settings.",
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Open Settings",
-            onPress: () => {
-              Linking.openSettings();
-            },
-          },
-        ]
-      );
-      return;
-    }
-
     setIsRequestingPermission(true);
     try {
-      const permissionResponse = await requestPermission();
-      if (permissionResponse.granted) {
-        showToast("Camera permission granted", "success");
+      const { status, canAskAgain } =
+        await Camera.requestCameraPermissionsAsync();
+
+      if (status === "granted") {
+        setHasCameraPermission(true);
+        setShowPermissionUI(false);
+        // showToast("Camera permission granted", "success");
+        // Start scanning after permission is granted
+        setIsScanning(true);
+        setIsCameraReady(false);
       } else {
-        showToast("Camera permission denied", "error");
+        setHasCameraPermission(false);
+
+        if (!canAskAgain) {
+          // Guide user to app settings
+          Alert.alert(
+            "Permission Required",
+            "Camera permission has been permanently denied. Please enable it in your device settings.",
+            [
+              { text: "Cancel", style: "cancel" },
+              {
+                text: "Open Settings",
+                onPress: () => {
+                  Linking.openSettings();
+                },
+              },
+            ]
+          );
+        } else {
+          showToast("Camera permission denied", "error");
+          setShowPermissionUI(true);
+        }
       }
     } catch (error) {
       console.error("Error requesting camera permission:", error);
       showToast("Failed to request camera permission", "error");
+      setShowPermissionUI(true);
     } finally {
       setIsRequestingPermission(false);
     }
@@ -216,26 +220,32 @@ export default function TabOneScreen() {
       return;
     }
 
-    // Check camera permission
-    if (!permission) {
-      showToast("Checking camera permissions...", "info");
-      return;
+    // Request camera permission ONLY when user taps the button
+   if (hasCameraPermission === null) {
+     await handleRequestPermission();
+     return;
     }
+    
+      if (hasCameraPermission === false) {
+        setShowPermissionUI(true);
+        return;
+      }
 
-    if (!permission.granted) {
-      // Request permission first
-      await handleRequestPermission();
-      return;
-    }
 
     // If we have permission, start scanning
-    if (permission.granted) {
+    if (hasCameraPermission === true) {
       setIsScanning(true);
-      setIsCameraReady(false); // Reset camera ready state
+      setIsCameraReady(false);
       setScannedData("");
       setScanResult(null);
       setLastScannedCode("");
     }
+  };
+
+  const stopScanning = () => {
+    setIsScanning(false);
+    setIsCameraReady(false);
+    setShowPermissionUI(false);
   };
 
   const isProcessingScanRef = useRef(false);
@@ -273,60 +283,50 @@ export default function TabOneScreen() {
     );
     setIsScanning(false);
     setIsCameraReady(false);
+    setShowPermissionUI(false);
   }, []);
 
   // Handle iPad-specific camera issues
-  const handleCameraError = useCallback((error: any) => {
-    console.error("Camera error:", error);
+  const handleCameraError = useCallback(
+    (error: any) => {
+      console.error("Camera error:", error);
 
-    if (Platform.OS === "ios") {
-      // For iOS/iPadOS, show a specific message
-      Alert.alert(
-        "Camera Unavailable",
-        "The camera is currently unavailable. Please try again or check if another app is using the camera.",
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Try Again",
-            onPress: () => {
-              setIsScanning(false);
-              setTimeout(() => setIsScanning(true), 500); // Small delay before retry
+      if (Platform.OS === "ios") {
+        Alert.alert(
+          "Camera Unavailable",
+          "The camera is currently unavailable. Please try again or check if another app is using the camera.",
+          [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Try Again",
+              onPress: () => {
+                setIsScanning(false);
+                setShowPermissionUI(false);
+                setTimeout(() => {
+                  if (hasCameraPermission) {
+                    setIsScanning(true);
+                  }
+                }, 500);
+              },
             },
-          },
-        ]
-      );
-    }
+          ]
+        );
+      }
 
-    setIsScanning(false);
-    setIsCameraReady(false);
-  }, []);
+      setIsScanning(false);
+      setIsCameraReady(false);
+      setShowPermissionUI(false);
+    },
+    [hasCameraPermission]
+  );
 
-  // Show loading while checking permissions
-  if (!permission) {
-    return (
-      <View style={styles.container}>
-        <Topbar>Ticket Scanning</Topbar>
-        <View style={styles.centerContent}>
-          <ActivityIndicator size="large" color={Colors.light.primary} />
-          <CustomText style={styles.permissionText}>
-            Checking camera permissions...
-          </CustomText>
-        </View>
-      </View>
-    );
-  }
-
-  // Show permission UI if permission denied
-  const showPermissionUI = !permission.granted && isScanning;
-
+  // Show initial UI (no permission check on load)
   return (
     <View style={styles.container}>
       <Topbar>Ticket Scanning</Topbar>
       <View style={{ paddingHorizontal: 16, flex: 1 }}>
         <View style={{ marginBottom: 20, width: "100%" }}>
           <CustomText style={styles.label}>Select Event</CustomText>
-
-          {/* Use the new EventDropdown component */}
           <EventDropdown
             selectedEvent={selectedEvent}
             onSelectEvent={handleSelectEvent}
@@ -335,7 +335,7 @@ export default function TabOneScreen() {
         </View>
 
         <View style={styles.scanContainer}>
-          {/* Camera Permission Denied UI - Only show when scanning */}
+          {/* Camera Permission Denied UI - Shows only when needed */}
           {showPermissionUI ? (
             <View style={styles.permissionDeniedContainer}>
               <MaterialIcons
@@ -347,46 +347,27 @@ export default function TabOneScreen() {
                 Camera Access Required
               </CustomText>
               <CustomText style={styles.permissionDeniedText}>
-                {permission.canAskAgain
-                  ? "You need to grant camera permission to scan QR codes."
-                  : "Camera permission has been permanently denied. Please enable it in your device settings."}
+                Camera access is required to scan QR codes on event tickets.
+                {isRequestingPermission
+                  ? ""
+                  : " Tap the button below to grant permission."}
               </CustomText>
 
-              {permission.canAskAgain ? (
-                <TouchableOpacity
-                  style={styles.permissionButton}
-                  onPress={handleRequestPermission}
-                  disabled={isRequestingPermission}
-                >
-                  {isRequestingPermission ? (
-                    <ActivityIndicator
-                      color={Colors.light.white}
-                      size="small"
-                    />
-                  ) : (
-                    <CustomText style={styles.permissionButtonText}>
-                      Grant Camera Permission
-                    </CustomText>
-                  )}
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  style={styles.permissionButton}
-                  onPress={() => {
-                    Alert.alert(
-                      "Open Settings",
-                      "Please go to your device settings to enable camera permission for this app.",
-                      [{ text: "OK" }]
-                    );
-                  }}
-                >
+              <TouchableOpacity
+                style={styles.permissionButton}
+                onPress={handleRequestPermission}
+                disabled={isRequestingPermission}
+              >
+                {isRequestingPermission ? (
+                  <ActivityIndicator color={Colors.light.white} size="small" />
+                ) : (
                   <CustomText style={styles.permissionButtonText}>
-                    Open Settings
+                    Grant Camera Permission
                   </CustomText>
-                </TouchableOpacity>
-              )}
+                )}
+              </TouchableOpacity>
             </View>
-          ) : isScanning && permission.granted ? (
+          ) : isScanning && hasCameraPermission === true ? (
             <View style={styles.cameraWrapper}>
               <View style={styles.cameraContainer}>
                 <CameraView
@@ -405,7 +386,6 @@ export default function TabOneScreen() {
                   }}
                   facing={cameraType}
                   responsiveOrientationWhenOrientationLocked
-                  // Add iPad-specific optimizations
                   ratio={Platform.OS === "ios" ? "16:9" : undefined}
                 />
                 <View style={styles.scanFrame}>
@@ -415,19 +395,7 @@ export default function TabOneScreen() {
                   <View style={[styles.corner, styles.cornerBottomRight]} />
                 </View>
 
-                {/* Camera Ready Indicator */}
-                {!isCameraReady && !isVerifying && (
-                  <View style={styles.cameraLoadingOverlay}>
-                    <ActivityIndicator
-                      size="large"
-                      color={Colors.light.white}
-                    />
-                    <CustomText style={styles.cameraLoadingText}>
-                      Initializing Camera...
-                    </CustomText>
-                  </View>
-                )}
-
+               
                 {/* Verification Overlay */}
                 {isVerifying && (
                   <View style={styles.verificationOverlay}>
@@ -462,6 +430,7 @@ export default function TabOneScreen() {
                 <TouchableOpacity
                   style={styles.actionButton}
                   onPress={startScanning}
+                  disabled={isVerifying}
                 >
                   <CustomText style={styles.actionButtonText}>
                     {scannedData ? "Scan Again" : "Start Scanning"}
@@ -470,10 +439,7 @@ export default function TabOneScreen() {
               ) : (
                 <TouchableOpacity
                   style={[styles.actionButton, styles.stopButton]}
-                  onPress={() => {
-                    setIsScanning(false);
-                    setIsCameraReady(false);
-                  }}
+                  onPress={stopScanning}
                   disabled={isVerifying}
                 >
                   <CustomText style={styles.actionButtonText}>
