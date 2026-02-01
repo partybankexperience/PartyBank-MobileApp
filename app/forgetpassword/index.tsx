@@ -34,13 +34,11 @@ const ForgetPassword = () => {
     try {
       await resetPasswordMutation.mutateAsync({ email });
 
-      // Navigate to next screen with email as parameter
       router.push({
         pathname: "/forgetpassword/mail",
         params: { email },
       });
     } catch (error) {
-      // Error is already handled in the mutation by the toast
       // console.error("Reset password error:", error);
     }
   };
