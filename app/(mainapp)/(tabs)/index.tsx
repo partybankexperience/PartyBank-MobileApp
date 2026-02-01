@@ -16,8 +16,11 @@ import Colors from "@/constants/Colors";
 import { useScanVerify } from "@/api/services/hooks/useScan";
 import { useToast } from "@/shared/toast/ToastContext";
 import { EventDropdown } from "../component/event/EventDropdown";
+import { useFocusEffect } from "expo-router";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function TabOneScreen() {
+  const queryClient = useQueryClient();
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [scannedData, setScannedData] = useState("");
   const [isScanning, setIsScanning] = useState(false);
@@ -41,6 +44,14 @@ export default function TabOneScreen() {
   const { showToast } = useToast();
   const scanVerifyMutation = useScanVerify();
 
+  useFocusEffect(
+    React.useCallback(() => {
+      queryClient.resetQueries({
+        queryKey: ["events"],
+      });
+    }, [queryClient]),
+  );
+
   useEffect(() => {
     return () => {
       setIsScanning(false);
@@ -51,7 +62,6 @@ export default function TabOneScreen() {
   useEffect(() => {
     setHasCameraPermission(null);
   }, []);
-
 
   const handleSelectEvent = (event: any) => {
     setSelectedEvent(event);
@@ -197,7 +207,7 @@ export default function TabOneScreen() {
                   Linking.openSettings();
                 },
               },
-            ]
+            ],
           );
         } else {
           showToast("Camera permission denied", "error");
@@ -221,16 +231,15 @@ export default function TabOneScreen() {
     }
 
     // Request camera permission ONLY when user taps the button
-   if (hasCameraPermission === null) {
-     await handleRequestPermission();
-     return;
+    if (hasCameraPermission === null) {
+      await handleRequestPermission();
+      return;
     }
-    
-      if (hasCameraPermission === false) {
-        setShowPermissionUI(true);
-        return;
-      }
 
+    if (hasCameraPermission === false) {
+      setShowPermissionUI(true);
+      return;
+    }
 
     // If we have permission, start scanning
     if (hasCameraPermission === true) {
@@ -265,7 +274,7 @@ export default function TabOneScreen() {
         isProcessingScanRef.current = false;
       });
     },
-    [isCameraReady]
+    [isCameraReady],
   );
 
   // Handle camera ready event
@@ -279,7 +288,7 @@ export default function TabOneScreen() {
     Alert.alert(
       "Camera Error",
       "Unable to start camera. Please try again or restart the app.",
-      [{ text: "OK" }]
+      [{ text: "OK" }],
     );
     setIsScanning(false);
     setIsCameraReady(false);
@@ -309,7 +318,7 @@ export default function TabOneScreen() {
                 }, 500);
               },
             },
-          ]
+          ],
         );
       }
 
@@ -317,7 +326,7 @@ export default function TabOneScreen() {
       setIsCameraReady(false);
       setShowPermissionUI(false);
     },
-    [hasCameraPermission]
+    [hasCameraPermission],
   );
 
   // Show initial UI (no permission check on load)
@@ -375,7 +384,6 @@ export default function TabOneScreen() {
                   ref={cameraRef}
                   onCameraReady={handleCameraReady}
                   onMountError={handleCameraMountError}
-                  onError={handleCameraError}
                   onBarcodeScanned={
                     scannedData || isVerifying || !isCameraReady
                       ? undefined
@@ -395,7 +403,6 @@ export default function TabOneScreen() {
                   <View style={[styles.corner, styles.cornerBottomRight]} />
                 </View>
 
-               
                 {/* Verification Overlay */}
                 {isVerifying && (
                   <View style={styles.verificationOverlay}>

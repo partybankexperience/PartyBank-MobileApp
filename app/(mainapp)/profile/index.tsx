@@ -13,6 +13,7 @@ import Colors from "@/constants/Colors";
 import { useToast } from "@/shared/toast/ToastContext";
 import { usePendingEvents } from "@/api/services/hooks/usePendingEvent";
 import PendingEventDetails from "../component/event/PendingEvent";
+import { RefreshControl } from "react-native";
 
 export default function Profile() {
   const { showToast } = useToast();
@@ -46,7 +47,7 @@ export default function Profile() {
 
   return (
     <View style={styles.container}>
-      <Topbar>Pending Event List</Topbar>
+      <Topbar showBack={true}>Pending Event List</Topbar>
       <FlatList
         data={allEvents}
         keyExtractor={(event) => event.id.toString()}
@@ -60,6 +61,14 @@ export default function Profile() {
           }
         }}
         onEndReachedThreshold={0.5}
+        refreshControl={
+          <RefreshControl
+            refreshing={isLoading}
+            onRefresh={() => refetch()}
+            colors={[Colors.light.primary]}
+            tintColor={Colors.light.primary}
+          />
+        }
         ListFooterComponent={
           <>
             {/* Loading state */}
