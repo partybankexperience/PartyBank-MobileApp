@@ -18,7 +18,7 @@
       "bundleIdentifier": "com.thepartybank",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSCameraUsageDescription": "The Party Bank uses the camera to scan QR codes on event tickets for validation purposes. For example, when you scan a ticket's QR code at an event entrance, the app reads the encoded ticket information to verify its authenticity and check-in status. The camera feed is processed in real-time to extract the QR code data, and no images or videos are captured, stored, or uploaded."
+        "NSCameraUsageDescription": "We use the camera to scan ticket QR codes for event check-in."
       }
     },
     "android": {
@@ -45,7 +45,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera",
+          "cameraPermission": "We use the camera to scan ticket QR codes for event check-in.",
           "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone",
           "recordAudioAndroid": true
         }
