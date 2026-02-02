@@ -46,6 +46,7 @@ export const EventDropdown: React.FC<EventDropdownProps> = ({
     refetch,
   } = useEvents();
 
+
   // Flatten all events from all pages
   const allEvents = data?.pages.flatMap((page) => page.items) || [];
 
@@ -162,13 +163,6 @@ export const EventDropdown: React.FC<EventDropdownProps> = ({
                   colors={[Colors.light.primary]}
                 />
               }
-              onLayout={() => {
-                if (allEvents.length > 0) {
-                  setTimeout(() => {
-                    flatListRef.current?.scrollToEnd({ animated: true });
-                  }, 100);
-                }
-              }}
               style={styles.modalFlatList}
               contentContainerStyle={styles.modalContentContainer}
               removeClippedSubviews={false}

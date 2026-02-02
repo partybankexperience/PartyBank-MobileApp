@@ -18,7 +18,7 @@
       "bundleIdentifier": "com.thepartybank",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSCameraUsageDescription": "The camera is used by event ticketers to scan QR codes on tickets at event entrances to verify ticket validity. Camera data is only used for real-time verification and is not stored."
+        "NSCameraUsageDescription": "We use the camera to scan ticket QR codes for event check-in."
       }
     },
     "android": {
@@ -45,7 +45,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera",
+          "cameraPermission": "We use the camera to scan ticket QR codes for event check-in.",
           "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone",
           "recordAudioAndroid": true
         }

@@ -18,5 +18,6 @@ export const useEvents = (pageSize: number = 20) => {
     },
     initialPageParam: 1,
     staleTime: 5 * 60 * 1000,
+    
   });
 };
