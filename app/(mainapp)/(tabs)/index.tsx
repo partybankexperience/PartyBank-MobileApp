@@ -8,6 +8,8 @@ import {
   ActivityIndicator,
   Linking,
   Platform,
+  ScrollView,
+  Image,
 } from "react-native";
 import { FontAwesome, MaterialIcons, Ionicons } from "@expo/vector-icons";
 import CustomText from "@/shared/text/CustomText";
@@ -28,6 +30,8 @@ export default function TabOneScreen() {
   const [scanResult, setScanResult] = useState<{
     isValid: boolean;
     message: string;
+    display?: React.ReactNode;
+    toastType: "success" | "error" | "info";
     icon: JSX.Element;
     data?: any;
   } | null>(null);
@@ -70,12 +74,44 @@ export default function TabOneScreen() {
     setLastScannedCode("");
   };
 
-  const getResultConfig = (outcome: string) => {
+  const getResultConfig = (outcome: string, resultData?: any) => {
     switch (outcome) {
-      case "ok":
+      case "already_scanned":
         return {
           isValid: true,
           message: "Valid Ticket",
+          display: (
+            <View style={[styles.resultDisplay, { gap: 10 }]}>
+              <View style={[styles.resultDetailRow]}>
+                <Image
+                  source={require("@/assets/icon/accept.png")}
+                  style={styles.statIcon}
+                />
+                <CustomText
+                  style={[styles.resultValue, styles.validText]}
+                  bold={true}
+                >
+                  Valid Ticket
+                </CustomText>
+              </View>
+              <Image
+                source={require("@/assets/icon/straight.png")}
+                style={{ width: 300, alignSelf: "center" }}
+              />
+              <View>
+                <CustomText
+                  style={styles.resultTitle}
+                  bold={true}
+                  centered={true}
+                >
+                  {" "}
+                  Type: {resultData?.ticket?.ticketName || "Unknown"}(
+                  {resultData?.ticket?.ticketColor})
+                </CustomText>
+              </View>
+            </View>
+          ),
+          toastType: "success" as const,
           icon: (
             <Ionicons
               name="checkmark-circle"
@@ -83,22 +119,51 @@ export default function TabOneScreen() {
               color={Colors.light.green}
             />
           ),
-          toastType: "success" as const,
         };
-      case "already_scanned":
+      case "ok":
         return {
           isValid: false,
           message: "Already Scanned",
+          display: (
+            <View style={[styles.resultDisplay]}>
+              <View style={{ justifyContent: "center", alignItems: "center" }}>
+                <View style={styles.infoBadge}>
+                  <MaterialIcons
+                    name="info"
+                    size={20}
+                    color={Colors.light.white}
+                  />
+                  <CustomText style={styles.infoBadgeText}>
+                    This ticket was already scanned
+                  </CustomText>
+                </View>
+              </View>
+            </View>
+          ),
+          toastType: "info" as const,
           icon: (
             <MaterialIcons name="info" size={40} color={Colors.light.primary} />
           ),
-          toastType: "info" as const,
         };
       case "invalid":
       default:
         return {
           isValid: false,
           message: "Invalid Ticket",
+          display: (
+            <View style={styles.resultDisplay}>
+              <View style={[styles.resultDetailRow]}>
+                <Image
+                  source={require("@/assets/icon/cancel.png")}
+                  style={styles.statIcon}
+                />
+                <CustomText style={[styles.resultValue, styles.errorText]}>
+                  Invalid Ticket
+                </CustomText>
+              </View>
+            </View>
+          ),
+          toastType: "error" as const,
           icon: (
             <MaterialIcons
               name="error"
@@ -106,7 +171,6 @@ export default function TabOneScreen() {
               color={Colors.light.primary}
             />
           ),
-          toastType: "error" as const,
         };
     }
   };
@@ -145,11 +209,13 @@ export default function TabOneScreen() {
       };
 
       const result = await scanVerifyMutation.mutateAsync(requestData);
-      const resultConfig = getResultConfig(result.outcome);
+      const resultConfig = getResultConfig(result.outcome, result);
 
       setScanResult({
         isValid: resultConfig.isValid,
         message: resultConfig.message,
+        display: resultConfig.display,
+        toastType: resultConfig.toastType,
         icon: resultConfig.icon,
         data: result,
       });
@@ -168,6 +234,8 @@ export default function TabOneScreen() {
       setScanResult({
         isValid: false,
         message: resultConfig.message,
+        display: resultConfig.display,
+        toastType: resultConfig.toastType,
         icon: resultConfig.icon,
         data: null,
       });
@@ -187,7 +255,6 @@ export default function TabOneScreen() {
       if (status === "granted") {
         setHasCameraPermission(true);
         setShowPermissionUI(false);
-        // showToast("Camera permission granted", "success");
         // Start scanning after permission is granted
         setIsScanning(true);
         setIsCameraReady(false);
@@ -459,11 +526,10 @@ export default function TabOneScreen() {
 
           {/* Scan Result Display */}
           {scanResult && (
-            <View style={styles.resultContainer}>
-              <View style={styles.resultIconContainer}>{scanResult.icon}</View>
-              <CustomText style={styles.resultText}>
-                {scanResult.message}
-              </CustomText>
+            <View style={styles.resultWrapper}>
+              <View style={styles.resultContainer}>
+                <View style={styles.resultDetails}>{scanResult.display}</View>
+              </View>
             </View>
           )}
         </View>
@@ -644,43 +710,139 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
   },
-  resultContainer: {
-    marginTop: 15,
-    padding: 20,
-    borderRadius: 12,
-    alignItems: "center",
+  // Result Display Styles
+  resultWrapper: {
     width: "100%",
+    marginTop: 20,
+  },
+  resultContainer: {
     backgroundColor: Colors.light.grey100,
-    borderWidth: 2,
-    borderColor: Colors.light.grey,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
+    // borderRadius: 12,
+    paddingVertical: 10,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  resultIconContainer: {
-    marginBottom: 12,
+  resultHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+
+    // marginBottom: 15,
   },
-  resultText: {
-    fontSize: 20,
+  resultIcon: {
+    marginRight: 12,
+  },
+  resultMessage: {
+    fontSize: 18,
     fontWeight: "bold",
-    textAlign: "center",
-    color: Colors.light.text,
-    marginBottom: 8,
+    flex: 1,
+  },
+  validMessage: {
+    color: Colors.light.green,
+  },
+  errorMessage: {
+    color: Colors.light.primary,
   },
   resultDetails: {
-    alignItems: "center",
-    marginTop: 8,
+    marginTop: 10,
   },
-  resultDetailText: {
+  // Display Component Styles
+  resultDisplay: {
+    width: "100%",
+  },
+  resultTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: Colors.light.text,
+    marginBottom: 12,
+  },
+  resultDetailRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 18,
+  },
+  resultLabel: {
     fontSize: 14,
     color: Colors.light.text2,
-    textAlign: "center",
-    marginBottom: 4,
+    flex: 1,
+  },
+  resultValue: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: Colors.light.text,
+    // flex: 1,
+    // textAlign: "right",
+  },
+  validText: {
+    color: Colors.light.green,
+    // fontWeight: "bold",
+  },
+  warningText: {
+    color: Colors.light.primary,
+    fontWeight: "bold",
+  },
+  errorText: {
+    color: Colors.light.primary,
+    // fontWeight: "bold",
+  },
+  successBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.light.green,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginTop: 15,
+    alignSelf: "flex-start",
+  },
+  successBadgeText: {
+    color: Colors.light.white,
+    fontSize: 12,
+    fontWeight: "600",
+    marginLeft: 6,
+  },
+  infoBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.light.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    // marginTop: 15,
+    // alignSelf: "flex-start",
+  },
+  infoBadgeText: {
+    color: Colors.light.white,
+    fontSize: 12,
+    fontWeight: "600",
+    marginLeft: 6,
+  },
+  errorTips: {
+    marginTop: 15,
+    paddingLeft: 10,
+  },
+  tipItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  tipText: {
+    fontSize: 13,
+    color: Colors.light.text2,
+    marginLeft: 8,
+    flex: 1,
+  },
+  detailsButton: {
+    marginTop: 15,
+    paddingVertical: 8,
+    alignItems: "center",
+  },
+  detailsButtonText: {
+    color: Colors.light.primary,
+    fontSize: 14,
+    fontWeight: "500",
+    textDecorationLine: "underline",
   },
   permissionText: {
     fontSize: 16,
@@ -715,5 +877,11 @@ const styles = StyleSheet.create({
     color: Colors.light.white,
     fontSize: 16,
     fontWeight: "bold",
+  },
+  statIcon: {
+    height: 23,
+    width: 23,
+    resizeMode: "contain",
+    marginRight: 9,
   },
 });
