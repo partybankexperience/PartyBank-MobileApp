@@ -54,7 +54,7 @@ const Login = () => {
       </View>
       <View style={{ marginTop: 12, gap: 6 }}>
         <Inputfield
-          placeholder="username@gmail.com"
+          placeholder="Enter your email"
           label="Email"
           value={email}
           onChangeText={setEmail}
