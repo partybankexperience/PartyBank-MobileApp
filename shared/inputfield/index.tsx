@@ -224,7 +224,7 @@ const Inputfield = React.forwardRef<TextInput, InputfieldProps>(
               style,
             ]}
             placeholder={placeholder}
-            placeholderTextColor={Colors.light.baseblack}
+            placeholderTextColor={Colors.light.text2}
             value={value}
             ref={ref}
             editable={!readonly && !disabled}

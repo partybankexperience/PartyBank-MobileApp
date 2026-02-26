@@ -52,7 +52,7 @@ const EventDetails = ({ event }: EventDetailsProps) => {
         <View style={styles.statsContainer}>
           <View style={styles.statItem}>
             <Image
-              source={require("@/assets/images/revenue.png")}
+              source={require("@/assets/images/tickets.png")}
               style={styles.statIcon}
             />
             <CustomText bold={true} variant="h6">
@@ -62,7 +62,7 @@ const EventDetails = ({ event }: EventDetailsProps) => {
           </View>
           <View style={styles.statItem}>
             <Image
-              source={require("@/assets/images/revenue.png")}
+              source={require("@/assets/images/buyer.png")}
               style={styles.statIcon}
             />
             <CustomText bold={true} variant="h6">
@@ -117,8 +117,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   statIcon: {
-    height: 27,
-    width: 27,
+    height: 23,
+    width: 23,
     resizeMode: "contain",
     marginBottom: 4,
   },
