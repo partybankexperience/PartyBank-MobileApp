@@ -76,7 +76,7 @@ export default function TabOneScreen() {
 
   const getResultConfig = (outcome: string, resultData?: any) => {
     switch (outcome) {
-      case "already_scanned":
+      case "ok":
         return {
           isValid: true,
           message: "Valid Ticket",
@@ -106,7 +106,7 @@ export default function TabOneScreen() {
                 >
                   {" "}
                   Type: {resultData?.ticket?.ticketName || "Unknown"}(
-                  {resultData?.ticket?.ticketColor})
+                  {resultData?.ticket?.ticketColor || "none"})
                 </CustomText>
               </View>
             </View>
@@ -120,7 +120,7 @@ export default function TabOneScreen() {
             />
           ),
         };
-      case "ok":
+      case "already_scanned":
         return {
           isValid: false,
           message: "Already Scanned",
