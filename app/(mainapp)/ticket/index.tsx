@@ -65,7 +65,7 @@ const TicketScanner = () => {
 
   return (
     <View style={styles.container}>
-      <Topbar>Ticket Scanning</Topbar>
+      <Topbar showBack>Ticket Scanning</Topbar>
       <ScrollView
         showsVerticalScrollIndicator={false}
         style={styles.scrollView}
