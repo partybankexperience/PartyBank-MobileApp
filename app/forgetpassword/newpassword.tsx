@@ -7,6 +7,7 @@ import { Ionicons } from "@expo/vector-icons";
 import Button from "@/shared/button";
 import { router, useLocalSearchParams } from "expo-router";
 import { useResetPasswordSubmit } from "@/api/services/hooks/useAuth";
+import { useToast } from "@/shared/toast/ToastContext";
 
 const NewPassword = () => {
   const [password, setPassword] = useState("");
@@ -15,6 +16,7 @@ const NewPassword = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordError, setPasswordError] = useState("");
   const [confirmPasswordError, setConfirmPasswordError] = useState("");
+  const { showToast } = useToast();
 
   const { email } = useLocalSearchParams();
 
@@ -35,6 +37,22 @@ const NewPassword = () => {
     if (password.length < 8) {
       return "Password must be at least 8 characters long";
     }
+
+    // Check for at least one uppercase letter
+    if (!/[A-Z]/.test(password)) {
+      return "Password must contain at least one uppercase letter";
+    }
+
+    // Check for at least one number
+    if (!/[0-9]/.test(password)) {
+      return "Password must contain at least one number";
+    }
+
+    // Check for at least one symbol (special character)
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+      return "Password must contain at least one symbol";
+    }
+
     return "";
   };
 
@@ -64,7 +82,13 @@ const NewPassword = () => {
     setPasswordError(passwordValidationError);
     setConfirmPasswordError(confirmPasswordValidationError);
 
-    if (passwordValidationError || confirmPasswordValidationError) {
+    if (passwordValidationError) {
+      showToast(passwordValidationError, "error");
+      return;
+    }
+
+    if (confirmPasswordValidationError) {
+      showToast(confirmPasswordValidationError, "error");
       return;
     }
 
@@ -75,18 +99,15 @@ const NewPassword = () => {
         confirmPassword: confirmPassword,
       });
 
-      // Navigate to login screen on success
+      showToast("Password reset successful", "success");
+
       setTimeout(() => {
         router.replace("/login");
       }, 1500);
     } catch (error) {
-      // Error is already handled in the mutation by the toast
       console.error("Reset password error:", error);
     }
   };
-
-  const isFormValid =
-    password && confirmPassword && !passwordError && !confirmPasswordError;
 
   return (
     <View style={styles.container}>
@@ -102,6 +123,9 @@ const NewPassword = () => {
           Your new password must be different from previously used passwords.
         </CustomText>
       </View>
+
+    
+
       <View style={{ marginTop: 12, gap: 6 }}>
         <Inputfield
           placeholder="Enter new password"
