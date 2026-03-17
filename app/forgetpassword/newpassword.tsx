@@ -38,17 +38,14 @@ const NewPassword = () => {
       return "Password must be at least 8 characters long";
     }
 
-    // Check for at least one uppercase letter
     if (!/[A-Z]/.test(password)) {
       return "Password must contain at least one uppercase letter";
     }
 
-    // Check for at least one number
     if (!/[0-9]/.test(password)) {
       return "Password must contain at least one number";
     }
 
-    // Check for at least one symbol (special character)
     if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
       return "Password must contain at least one symbol";
     }
@@ -98,8 +95,6 @@ const NewPassword = () => {
         password: password,
         confirmPassword: confirmPassword,
       });
-
-      showToast("Password reset successful", "success");
 
       setTimeout(() => {
         router.replace("/login");
