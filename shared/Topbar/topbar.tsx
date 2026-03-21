@@ -34,12 +34,11 @@ const Topbar = ({ children, showBack = false, showProfileIcon = true }: TopbarPr
           onPress={() => router.push("/profile")}
         >
           <Image
-            source={require("@/assets/images/profile.png")}
+            source={require("@/assets/icon/noti.png")}
             style={styles.image}
           />
         </Pressable>
       )}
-      
     </View>
   );
 };

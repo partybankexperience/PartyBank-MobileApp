@@ -1,4 +1,5 @@
 import EventIcon from "@/assets/svg/EventIcon";
+import HomeIcon from "@/assets/svg/HomeIcon";
 import NotificationIcon from "@/assets/svg/NotiIcon";
 import ScannerIcon from "@/assets/svg/ScannerIcon";
 import Colors from "@/constants/Colors";
@@ -32,6 +33,13 @@ export default function TabLayout() {
           headerShown: false,
         }}
       >
+        <Tabs.Screen
+          name="home"
+          options={{
+            title: "Home",
+            tabBarIcon: ({ color }) => <HomeIcon fill={color} />,
+          }}
+        />
         <Tabs.Screen
           name="index"
           options={{
