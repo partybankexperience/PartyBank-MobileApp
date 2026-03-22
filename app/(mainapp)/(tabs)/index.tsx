@@ -447,12 +447,15 @@ export default function TabOneScreen() {
 
   const handleInputFocus = () => {
     // For Android, we need a longer delay and different scrolling approach
-    setTimeout(() => {
-      if (scrollViewRef.current) {
-        // Scroll to the input's position
-        scrollViewRef.current.scrollToEnd({ animated: true });
-      }
-    }, Platform.OS === "android" ? 300 : 100);
+    setTimeout(
+      () => {
+        if (scrollViewRef.current) {
+          // Scroll to the input's position
+          scrollViewRef.current.scrollToEnd({ animated: true });
+        }
+      },
+      Platform.OS === "android" ? 300 : 100,
+    );
   };
 
   return (
@@ -584,7 +587,7 @@ export default function TabOneScreen() {
                     <View style={styles.inputFieldContainer}>
                       <Inputfield
                         ref={inputRef}
-                        placeholder="Enter ticket code manually"
+                        placeholder="Enter ticket code e.g PB-358282"
                         value={manualCode}
                         onChangeText={setManualCode}
                         onFocus={handleInputFocus}
