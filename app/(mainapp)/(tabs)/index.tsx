@@ -10,6 +10,10 @@ import {
   Platform,
   ScrollView,
   Image,
+  KeyboardAvoidingView,
+  Keyboard,
+  TouchableWithoutFeedback,
+  Dimensions,
 } from "react-native";
 import { FontAwesome, MaterialIcons, Ionicons } from "@expo/vector-icons";
 import CustomText from "@/shared/text/CustomText";
@@ -20,9 +24,12 @@ import { useToast } from "@/shared/toast/ToastContext";
 import { EventDropdown } from "../component/event/EventDropdown";
 import { useFocusEffect } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
+import { Inputfield } from "@/shared/inputfield";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function TabOneScreen() {
   const queryClient = useQueryClient();
+  const insets = useSafeAreaInsets();
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [scannedData, setScannedData] = useState("");
   const [isScanning, setIsScanning] = useState(false);
@@ -44,6 +51,9 @@ export default function TabOneScreen() {
     boolean | null
   >(null);
   const [showPermissionUI, setShowPermissionUI] = useState(false);
+  const [manualCode, setManualCode] = useState("");
+  const scrollViewRef = useRef<ScrollView>(null);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   const { showToast } = useToast();
   const scanVerifyMutation = useScanVerify();
@@ -55,6 +65,26 @@ export default function TabOneScreen() {
       });
     }, [queryClient]),
   );
+
+  useEffect(() => {
+    const keyboardWillShow = (event: any) => {
+      setKeyboardHeight(event.endCoordinates.height);
+    };
+    const keyboardWillHide = () => {
+      setKeyboardHeight(0);
+    };
+
+    const subscriptions = [
+      Keyboard.addListener("keyboardWillShow", keyboardWillShow),
+      Keyboard.addListener("keyboardWillHide", keyboardWillHide),
+      Keyboard.addListener("keyboardDidShow", keyboardWillShow),
+      Keyboard.addListener("keyboardDidHide", keyboardWillHide),
+    ];
+
+    return () => {
+      subscriptions.forEach((subscription) => subscription.remove());
+    };
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -396,145 +426,242 @@ export default function TabOneScreen() {
     [hasCameraPermission],
   );
 
-  // Show initial UI (no permission check on load)
+  const handleManualVerification = async () => {
+    if (!selectedEvent) {
+      showToast("Please select an event first", "error");
+      return;
+    }
+
+    if (!manualCode.trim()) {
+      showToast("Please enter a ticket code", "error");
+      return;
+    }
+
+    if (isVerifying) return;
+
+    await verifyScannedCode(manualCode.trim());
+    setManualCode(""); // Clear the input after verification
+  };
+
+  const handleInputFocus = () => {
+    // Scroll to the manual entry section when input is focused
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+  };
+
+  // Calculate keyboard vertical offset to account for tab bar and safe area
+  const getKeyboardOffset = () => {
+    // For iOS, we need to account for the bottom safe area
+    // For Android, we don't need additional offset
+    if (Platform.OS === "ios") {
+      // Subtract the bottom safe area to prevent the keyboard from pushing too much
+      return -insets.bottom;
+    }
+    return 0;
+  };
+
   return (
-    <View style={styles.container}>
-      <Topbar>Ticket Scanning</Topbar>
-      <View style={{ paddingHorizontal: 16, flex: 1 }}>
-        <View style={{ marginBottom: 20, width: "100%" }}>
-          <CustomText style={styles.label}>Select Event</CustomText>
-          <EventDropdown
-            selectedEvent={selectedEvent}
-            onSelectEvent={handleSelectEvent}
-            placeholder="Select an event"
-          />
-        </View>
-
-        <View style={styles.scanContainer}>
-          {/* Camera Permission Denied UI - Shows only when needed */}
-          {showPermissionUI ? (
-            <View style={styles.permissionDeniedContainer}>
-              <MaterialIcons
-                name="no-photography"
-                size={100}
-                color={Colors.light.primary}
-              />
-              <CustomText style={styles.permissionDeniedTitle}>
-                Camera Access Required
-              </CustomText>
-              <CustomText style={styles.permissionDeniedText}>
-                Camera access is required to scan QR codes on event tickets.
-                {isRequestingPermission
-                  ? ""
-                  : " Tap the button below to grant permission."}
-              </CustomText>
-
-              <TouchableOpacity
-                style={styles.permissionButton}
-                onPress={handleRequestPermission}
-                disabled={isRequestingPermission}
-              >
-                {isRequestingPermission ? (
-                  <ActivityIndicator color={Colors.light.white} size="small" />
-                ) : (
-                  <CustomText style={styles.permissionButtonText}>
-                    Grant Camera Permission
-                  </CustomText>
-                )}
-              </TouchableOpacity>
-            </View>
-          ) : isScanning && hasCameraPermission === true ? (
-            <View style={styles.cameraWrapper}>
-              <View style={styles.cameraContainer}>
-                <CameraView
-                  style={styles.camera}
-                  ref={cameraRef}
-                  onCameraReady={handleCameraReady}
-                  onMountError={handleCameraMountError}
-                  onBarcodeScanned={
-                    scannedData || isVerifying || !isCameraReady
-                      ? undefined
-                      : handleScanAlternative
-                  }
-                  barcodeScannerSettings={{
-                    barcodeTypes: ["qr"],
-                  }}
-                  facing={cameraType}
-                  responsiveOrientationWhenOrientationLocked
-                  ratio={Platform.OS === "ios" ? "16:9" : undefined}
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <View style={styles.container}>
+        <Topbar>Ticket Scanning</Topbar>
+        <KeyboardAvoidingView
+          style={styles.keyboardAvoidingView}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          keyboardVerticalOffset={Platform.OS === "ios" ? insets.top + 60 : 0}
+        >
+          <ScrollView
+            ref={scrollViewRef}
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollViewContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={{ paddingHorizontal: 16, flex: 1 }}>
+              <View style={{ marginBottom: 20, width: "100%" }}>
+                <CustomText style={styles.label}>Select Event</CustomText>
+                <EventDropdown
+                  selectedEvent={selectedEvent}
+                  onSelectEvent={handleSelectEvent}
+                  placeholder="Select an event"
                 />
-                <View style={styles.scanFrame}>
-                  <View style={[styles.corner, styles.cornerTopLeft]} />
-                  <View style={[styles.corner, styles.cornerTopRight]} />
-                  <View style={[styles.corner, styles.cornerBottomLeft]} />
-                  <View style={[styles.corner, styles.cornerBottomRight]} />
+              </View>
+
+              <View style={styles.scanContainer}>
+                {/* Camera Permission Denied UI - Shows only when needed */}
+                {showPermissionUI ? (
+                  <View style={styles.permissionDeniedContainer}>
+                    <MaterialIcons
+                      name="no-photography"
+                      size={100}
+                      color={Colors.light.primary}
+                    />
+                    <CustomText style={styles.permissionDeniedTitle}>
+                      Camera Access Required
+                    </CustomText>
+                    <CustomText style={styles.permissionDeniedText}>
+                      Camera access is required to scan QR codes on event
+                      tickets.
+                      {isRequestingPermission
+                        ? ""
+                        : " Tap the button below to grant permission."}
+                    </CustomText>
+
+                    <TouchableOpacity
+                      style={styles.permissionButton}
+                      onPress={handleRequestPermission}
+                      disabled={isRequestingPermission}
+                    >
+                      {isRequestingPermission ? (
+                        <ActivityIndicator
+                          color={Colors.light.white}
+                          size="small"
+                        />
+                      ) : (
+                        <CustomText style={styles.permissionButtonText}>
+                          Grant Camera Permission
+                        </CustomText>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                ) : isScanning && hasCameraPermission === true ? (
+                  <View style={styles.cameraWrapper}>
+                    <View style={styles.cameraContainer}>
+                      <CameraView
+                        style={styles.camera}
+                        ref={cameraRef}
+                        onCameraReady={handleCameraReady}
+                        onMountError={handleCameraMountError}
+                        onBarcodeScanned={
+                          scannedData || isVerifying || !isCameraReady
+                            ? undefined
+                            : handleScanAlternative
+                        }
+                        barcodeScannerSettings={{
+                          barcodeTypes: ["qr"],
+                        }}
+                        facing={cameraType}
+                        responsiveOrientationWhenOrientationLocked
+                        ratio={Platform.OS === "ios" ? "16:9" : undefined}
+                      />
+                      <View style={styles.scanFrame}>
+                        <View style={[styles.corner, styles.cornerTopLeft]} />
+                        <View style={[styles.corner, styles.cornerTopRight]} />
+                        <View
+                          style={[styles.corner, styles.cornerBottomLeft]}
+                        />
+                        <View
+                          style={[styles.corner, styles.cornerBottomRight]}
+                        />
+                      </View>
+
+                      {/* Verification Overlay */}
+                      {isVerifying && (
+                        <View style={styles.verificationOverlay}>
+                          <ActivityIndicator
+                            size="large"
+                            color={Colors.light.white}
+                          />
+                          <CustomText style={styles.verificationText}>
+                            Verifying Ticket...
+                          </CustomText>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                ) : (
+                  <View style={styles.scanPlaceholder}>
+                    <FontAwesome
+                      name="camera"
+                      size={100}
+                      color={Colors.light.baseblack}
+                    />
+                    <CustomText style={styles.placeholderText}>
+                      {scannedData
+                        ? "Scan complete!"
+                        : "Ready to scan QR codes"}
+                    </CustomText>
+                  </View>
+                )}
+
+                <View style={styles.manualEntryContainer}>
+                  <View style={styles.inputWrapper}>
+                    <View style={styles.inputFieldContainer}>
+                      <Inputfield
+                        placeholder="Enter ticket code manually"
+                        value={manualCode}
+                        onChangeText={setManualCode}
+                        onFocus={handleInputFocus}
+                        style={{ width: "95%" }}
+                      />
+                    </View>
+                    <TouchableOpacity
+                      style={[
+                        styles.manualVerifyButton,
+                        (!manualCode.trim() || isVerifying) &&
+                          styles.disabledButton,
+                      ]}
+                      onPress={() => handleManualVerification()}
+                      disabled={!manualCode.trim() || isVerifying}
+                    >
+                      {isVerifying ? (
+                        <ActivityIndicator
+                          size="small"
+                          color={Colors.light.white}
+                        />
+                      ) : (
+                        <Ionicons
+                          name="checkmark-circle"
+                          size={24}
+                          color={Colors.light.white}
+                        />
+                      )}
+                    </TouchableOpacity>
+                  </View>
                 </View>
 
-                {/* Verification Overlay */}
-                {isVerifying && (
-                  <View style={styles.verificationOverlay}>
-                    <ActivityIndicator
-                      size="large"
-                      color={Colors.light.white}
-                    />
-                    <CustomText style={styles.verificationText}>
-                      Verifying Ticket...
-                    </CustomText>
+                {!showPermissionUI && (
+                  <>
+                    {!isScanning ? (
+                      <TouchableOpacity
+                        style={styles.actionButton}
+                        onPress={startScanning}
+                        disabled={isVerifying}
+                      >
+                        <CustomText style={styles.actionButtonText}>
+                          {scannedData ? "Scan Again" : "Start Scanning"}
+                        </CustomText>
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity
+                        style={[styles.actionButton, styles.stopButton]}
+                        onPress={stopScanning}
+                        disabled={isVerifying}
+                      >
+                        <CustomText style={styles.actionButtonText}>
+                          {isVerifying ? "Verifying..." : "Stop Scanning"}
+                        </CustomText>
+                      </TouchableOpacity>
+                    )}
+                  </>
+                )}
+
+                {/* Scan Result Display */}
+                {scanResult && (
+                  <View style={styles.resultWrapper}>
+                    <View style={styles.resultContainer}>
+                      <View style={styles.resultDetails}>
+                        {scanResult.display}
+                      </View>
+                    </View>
                   </View>
                 )}
               </View>
             </View>
-          ) : (
-            <View style={styles.scanPlaceholder}>
-              <FontAwesome
-                name="camera"
-                size={100}
-                color={Colors.light.baseblack}
-              />
-              <CustomText style={styles.placeholderText}>
-                {scannedData ? "Scan complete!" : "Ready to scan QR codes"}
-              </CustomText>
-            </View>
-          )}
-
-          {/* Action Buttons */}
-          {!showPermissionUI && (
-            <>
-              {!isScanning ? (
-                <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={startScanning}
-                  disabled={isVerifying}
-                >
-                  <CustomText style={styles.actionButtonText}>
-                    {scannedData ? "Scan Again" : "Start Scanning"}
-                  </CustomText>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  style={[styles.actionButton, styles.stopButton]}
-                  onPress={stopScanning}
-                  disabled={isVerifying}
-                >
-                  <CustomText style={styles.actionButtonText}>
-                    {isVerifying ? "Verifying..." : "Stop Scanning"}
-                  </CustomText>
-                </TouchableOpacity>
-              )}
-            </>
-          )}
-
-          {/* Scan Result Display */}
-          {scanResult && (
-            <View style={styles.resultWrapper}>
-              <View style={styles.resultContainer}>
-                <View style={styles.resultDetails}>{scanResult.display}</View>
-              </View>
-            </View>
-          )}
-        </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </View>
-    </View>
+    </TouchableWithoutFeedback>
   );
 }
 
@@ -542,6 +669,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.light.white,
+  },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollViewContent: {
+    flexGrow: 1,
+    paddingBottom: 20,
   },
   centerContent: {
     flex: 1,
@@ -883,5 +1020,42 @@ const styles = StyleSheet.create({
     width: 23,
     resizeMode: "contain",
     marginRight: 9,
+  },
+  manualEntryContainer: {
+    width: "100%",
+    marginBottom: 16,
+    marginTop: 8,
+  },
+  inputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: "100%",
+  },
+
+  manualVerifyButton: {
+    backgroundColor: Colors.light.primary,
+    width: 50,
+    height: 50,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  inputFieldContainer: {
+    flex: 1,
+  },
+  inputContainer: {
+    width: "100%",
+    margin: 0,
+    padding: 0,
+  },
+  manualInput: {
+    backgroundColor: Colors.light.grey100,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: Platform.OS === "ios" ? 12 : 8,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: Colors.light.grey,
+    width: "100%",
   },
 });
