@@ -14,6 +14,7 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
   Dimensions,
+  TextInput,
 } from "react-native";
 import { FontAwesome, MaterialIcons, Ionicons } from "@expo/vector-icons";
 import CustomText from "@/shared/text/CustomText";
@@ -53,6 +54,7 @@ export default function TabOneScreen() {
   const [showPermissionUI, setShowPermissionUI] = useState(false);
   const [manualCode, setManualCode] = useState("");
   const scrollViewRef = useRef<ScrollView>(null);
+  const inputRef = useRef<TextInput>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   const { showToast } = useToast();
@@ -444,21 +446,13 @@ export default function TabOneScreen() {
   };
 
   const handleInputFocus = () => {
-    // Scroll to the manual entry section when input is focused
+    // For Android, we need a longer delay and different scrolling approach
     setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, 100);
-  };
-
-  // Calculate keyboard vertical offset to account for tab bar and safe area
-  const getKeyboardOffset = () => {
-    // For iOS, we need to account for the bottom safe area
-    // For Android, we don't need additional offset
-    if (Platform.OS === "ios") {
-      // Subtract the bottom safe area to prevent the keyboard from pushing too much
-      return -insets.bottom;
-    }
-    return 0;
+      if (scrollViewRef.current) {
+        // Scroll to the input's position
+        scrollViewRef.current.scrollToEnd({ animated: true });
+      }
+    }, Platform.OS === "android" ? 300 : 100);
   };
 
   return (
@@ -467,7 +461,7 @@ export default function TabOneScreen() {
         <Topbar>Ticket Scanning</Topbar>
         <KeyboardAvoidingView
           style={styles.keyboardAvoidingView}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
           keyboardVerticalOffset={Platform.OS === "ios" ? insets.top + 60 : 0}
         >
           <ScrollView
@@ -476,6 +470,7 @@ export default function TabOneScreen() {
             contentContainerStyle={styles.scrollViewContent}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
+            scrollEnabled={true}
           >
             <View style={{ paddingHorizontal: 16, flex: 1 }}>
               <View style={{ marginBottom: 20, width: "100%" }}>
@@ -588,6 +583,7 @@ export default function TabOneScreen() {
                   <View style={styles.inputWrapper}>
                     <View style={styles.inputFieldContainer}>
                       <Inputfield
+                        ref={inputRef}
                         placeholder="Enter ticket code manually"
                         value={manualCode}
                         onChangeText={setManualCode}
