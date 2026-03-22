@@ -108,7 +108,7 @@ export const scanApi = {
     const response = await api.post("/scan/verify", request);
 
     const data = await response.data;
-    console.log("This is data", data);
+    // console.log("This is data", data);
     
 
     if (!response.data) {
