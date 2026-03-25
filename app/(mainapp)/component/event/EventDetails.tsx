@@ -1,4 +1,10 @@
-import { Image, Pressable, StyleSheet, View } from "react-native";
+import {
+  Image,
+  Pressable,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import React from "react";
 import Colors from "@/constants/Colors";
 import CustomText from "@/shared/text/CustomText";
@@ -22,9 +28,16 @@ const EventDetails = ({ event }: EventDetailsProps) => {
   const handlePress = () => {
     router.push({
       pathname: "/ticket",
-      params: { eventId: event.id },
+      params: {
+        eventId: event.id,
+        eventName: event.name,
+        eventBanner: event.bannerImage,
+        eventStartDate: event.startDate,
+      },
     });
   };
+
+  console.log("Event details", event);
 
   return (
     <View style={styles.container}>
@@ -32,11 +45,7 @@ const EventDetails = ({ event }: EventDetailsProps) => {
         <View style={styles.eventHeader}>
           <View>
             <Image
-              source={
-                event.bannerImage
-                  ? { uri: event.bannerImage }
-                  : require("@/assets/images/temp.png")
-              }
+              source={{ uri: event.bannerImage }}
               style={styles.eventImage}
             />
           </View>
@@ -48,6 +57,12 @@ const EventDetails = ({ event }: EventDetailsProps) => {
               {formatDate(event.startDate)}
             </CustomText>
           </View>
+          <TouchableOpacity onPress={handlePress}>
+            <Image
+              source={require("@/assets/icon/arrow.png")}
+              style={styles.arrowIcon}
+            />
+          </TouchableOpacity>
         </View>
         <View style={styles.statsContainer}>
           <View style={styles.statItem}>
@@ -121,5 +136,10 @@ const styles = StyleSheet.create({
     width: 23,
     resizeMode: "contain",
     marginBottom: 4,
+  },
+  arrowIcon: {
+    height: 35,
+    width: 35,
+    resizeMode: "contain",
   },
 });
