@@ -1,13 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
-  SafeAreaView,
   ScrollView,
   View,
-  Text,
   StyleSheet,
-  StatusBar,
   TouchableOpacity,
   Image,
+  ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import EmptyRecentScanState from "../component/emptystate/EmptyRecentScanState";
 import Colors from "@/constants/Colors";
@@ -15,11 +14,55 @@ import CustomText from "@/shared/text/CustomText";
 import EmptyPendingEvent from "../component/emptystate/EmptyPendingEvent";
 import ScannedCard from "../component/home/card";
 import { router } from "expo-router";
+import RecentScanState from "../component/datastate/RecentScanState";
+import { useScanHistory } from "@/api/services/hooks/useScanHistory";
+import PendingEventState from "../component/datastate/PendingEventState";
+import { usePendingEvents } from "@/api/services/hooks/usePendingEvent";
 
 const App = () => {
+  const [refreshing, setRefreshing] = useState(false);
+
+  const {
+    data: scanHistoryData,
+    isLoading: isLoadingScanHistory,
+    refetch: refetchScanHistory,
+  } = useScanHistory(null);
+
+  const {
+    data: pendingEventsData,
+    isLoading: isLoadingPendingEvents,
+    refetch: refetchPendingEvents,
+  } = usePendingEvents();
+
+  // Get all scan history items
+  const scanHistoryItems =
+    scanHistoryData?.pages?.flatMap((page) => page.items) || [];
+  const hasScans = scanHistoryItems.length > 0;
+
+  // Get pending events
+  const allPendingEvents =
+    pendingEventsData?.pages?.flatMap((page) => page.items) || [];
+  const hasPendingEvents = allPendingEvents.length > 0;
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([refetchScanHistory(), refetchPendingEvents()]);
+    setRefreshing(false);
+  }, [refetchScanHistory, refetchPendingEvents]);
+
   return (
     <View style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[Colors.light.primary]}
+            tintColor={Colors.light.primary}
+          />
+        }
+      >
         {/* Header Section */}
         <View style={styles.header}>
           <View>
@@ -29,7 +72,7 @@ const App = () => {
             </CustomText>
           </View>
           <View style={styles.headerIcons}>
-            <TouchableOpacity >
+            <TouchableOpacity>
               <Image
                 source={require("@/assets/icon/noti.png")}
                 style={styles.image}
@@ -46,14 +89,22 @@ const App = () => {
         {/* Events List Section */}
         <View style={styles.sectionHeader}>
           <CustomText bold>Recent Scans</CustomText>
-          <TouchableOpacity onPress={()=> router.push('/recentscan') }>
+          <TouchableOpacity onPress={() => router.push("/recentscan")}>
             <CustomText color={Colors.light.primary} variant="h5">
               View All
             </CustomText>
           </TouchableOpacity>
         </View>
         <View style={styles.eventCard}>
-          <EmptyRecentScanState />
+          {isLoadingScanHistory && !refreshing ? (
+            <View style={styles.loaderContainer}>
+              <ActivityIndicator size="large" color={Colors.light.primary} />
+            </View>
+          ) : hasScans ? (
+            <RecentScanState />
+          ) : (
+            <EmptyRecentScanState />
+          )}
         </View>
 
         {/* Pending Events Section */}
@@ -67,7 +118,15 @@ const App = () => {
         </View>
 
         <View style={styles.eventCard}>
-          <EmptyPendingEvent />
+          {isLoadingPendingEvents && !refreshing ? (
+            <View style={styles.loaderContainer}>
+              <ActivityIndicator size="large" color={Colors.light.primary} />
+            </View>
+          ) : hasPendingEvents ? (
+            <PendingEventState />
+          ) : (
+            <EmptyPendingEvent />
+          )}
         </View>
 
         {/* Bottom Padding */}
@@ -94,32 +153,34 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 16,
   },
-
   image: {
     height: 40,
     width: 40,
     resizeMode: "contain",
   },
-
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-
     marginTop: 24,
     marginBottom: 12,
   },
   eventCard: {
     borderColor: Colors.light.grey,
-
     marginBottom: 12,
-    padding: 16,
+    paddingVertical: 16,
     borderRadius: 16,
     borderWidth: 1,
+    minHeight: 150,
   },
-
   bottomPadding: {
     height: 30,
+  },
+  loaderContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
   },
 });
 

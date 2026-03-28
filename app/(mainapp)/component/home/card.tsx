@@ -6,9 +6,9 @@ import {
   TouchableOpacity,
   Modal,
   TouchableWithoutFeedback,
-  Text,
+  ActivityIndicator,
 } from "react-native";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import CustomText from "@/shared/text/CustomText";
 import Colors from "@/constants/Colors";
 import {
@@ -16,17 +16,32 @@ import {
   widthPercentageToDP as wp,
 } from "react-native-responsive-screen";
 import { MaterialIcons } from "@expo/vector-icons";
+import { useScanSummary } from "@/api/services/hooks/useScanSummary";
 
 const ScannedCard = () => {
   const [selectedPeriod, setSelectedPeriod] = useState("Today");
   const [dropdownVisible, setDropdownVisible] = useState(false);
 
-  const periods = ["Today", "This Week", "This Month"];
+  const periods = [
+    { label: "Today", value: "today" },
+    { label: "This Week", value: "week" },
+    { label: "This Month", value: "month" },
+  ];
+
+  const { data, isLoading, refetch } = useScanSummary(
+    periods.find((p) => p.label === selectedPeriod)?.value || "today",
+  );
+
+  useEffect(() => {
+    refetch();
+  }, [selectedPeriod, refetch]);
 
   const handleSelectPeriod = (period: string) => {
     setSelectedPeriod(period);
     setDropdownVisible(false);
   };
+
+  const totalScanned = data?.totalScanned || 0;
 
   return (
     <View>
@@ -43,11 +58,7 @@ const ScannedCard = () => {
               style={styles.dropdownButton}
               onPress={() => setDropdownVisible(!dropdownVisible)}
             >
-              <CustomText
-                color={Colors.light.white}
-                variant="h5"
-                medium
-              >
+              <CustomText color={Colors.light.white} variant="h5" medium>
                 {selectedPeriod}
               </CustomText>
               <MaterialIcons
@@ -57,9 +68,16 @@ const ScannedCard = () => {
               />
             </TouchableOpacity>
           </View>
-          <CustomText color={Colors.light.white} bold={true} variant="h1">
-            0
-          </CustomText>
+
+          {isLoading ? (
+            <View style={styles.loaderContainer}>
+              <ActivityIndicator size="large" color={Colors.light.white} />
+            </View>
+          ) : (
+            <CustomText color={Colors.light.white} bold={true} variant="h1">
+              {totalScanned}
+            </CustomText>
+          )}
         </View>
 
         <View style={styles.spiralImageContainer}>
@@ -79,15 +97,14 @@ const ScannedCard = () => {
                   key={index}
                   style={[
                     styles.dropdownItem,
-                    selectedPeriod === period && styles.selectedDropdownItem,
+                    selectedPeriod === period.label &&
+                      styles.selectedDropdownItem,
                     index === periods.length - 1 && styles.lastDropdownItem,
                   ]}
-                  onPress={() => handleSelectPeriod(period)}
+                  onPress={() => handleSelectPeriod(period.label)}
                 >
-                  <CustomText
-                    color={Colors.light.white}
-                  >
-                    {period}
+                  <CustomText color={Colors.light.white}>
+                    {period.label}
                   </CustomText>
                 </TouchableOpacity>
               ))}
@@ -129,7 +146,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     gap: wp("2%"),
   },
-
+  loaderContainer: {
+    alignItems: "flex-start",
+    paddingVertical: hp("1%"),
+  },
   modalOverlay: {
     position: "absolute",
     top: hp("10%"),
@@ -157,7 +177,6 @@ const styles = StyleSheet.create({
   selectedDropdownItem: {
     backgroundColor: Colors.light.primary,
   },
-
   spiralImageContainer: {
     position: "absolute",
     left: 0,

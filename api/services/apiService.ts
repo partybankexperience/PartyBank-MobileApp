@@ -28,7 +28,7 @@ export const authApi = {
     return data;
   },
   resetPasswordInitiate: async (
-    email: string
+    email: string,
   ): Promise<ResetPasswordInitiateResponse> => {
     const response = await api.post("/reset-password/initiate", { email });
 
@@ -52,7 +52,7 @@ export const authApi = {
     return data;
   },
   resetPasswordSubmit: async (
-    request: ResetPasswordSubmitRequest
+    request: ResetPasswordSubmitRequest,
   ): Promise<ResetPasswordSubmitResponse> => {
     const response = await api.post("/reset-password/submit", request);
 
@@ -69,10 +69,10 @@ export const authApi = {
 export const scanApi = {
   getEvents: async (
     page: number = 1,
-    pageSize: number = 20
+    pageSize: number = 20,
   ): Promise<EventsResponse> => {
     const response = await api.get(
-      `/scan/events?page=${page}&pageSize=${pageSize}`
+      `/scan/events?page=${page}&pageSize=${pageSize}`,
     );
 
     const data = await response.data;
@@ -97,7 +97,7 @@ export const scanApi = {
   },
 
   verifyScan: async (
-    request: ScanVerifyRequest
+    request: ScanVerifyRequest,
   ): Promise<ScanVerifyResponse> => {
     const token = await tokenService.getAccessToken();
 
@@ -109,7 +109,6 @@ export const scanApi = {
 
     const data = await response.data;
     console.log("This is data", data);
-    
 
     if (!response.data) {
       throw new Error(data.message || "Failed to verify scan");
@@ -120,10 +119,10 @@ export const scanApi = {
 
   getPendingEvents: async (
     page: number = 1,
-    pageSize: number = 20
+    pageSize: number = 20,
   ): Promise<PendingEventsResponse> => {
     const response = await api.get(
-      `/invites/me/pending-invites?page=${page}&pageSize=${pageSize}`
+      `/invites/me/pending-invites?page=${page}&pageSize=${pageSize}`,
     );
 
     const data = await response.data;
@@ -133,6 +132,54 @@ export const scanApi = {
     }
 
     return data;
+  },
+
+  getScanHistory: async (
+    page: number = 1,
+    limit: number = 10,
+    eventId?: string | null,
+  ) => {
+    const token = await tokenService.getAccessToken();
+
+    if (!token) {
+      throw new Error("No authentication token found");
+    }
+
+    const params: { page: number; limit: number; eventId?: string } = {
+      page,
+      limit,
+    };
+
+    if (eventId) {
+      params.eventId = eventId;
+    }
+
+    const response = await api.get(`/scan/me/history`, {
+      params,
+    });
+
+    if (!response.data) {
+      throw new Error("Failed to fetch scan history");
+    }
+
+    return response.data;
+  },
+  getScanSummary: async (range: string) => {
+    const token = await tokenService.getAccessToken();
+
+    if (!token) {
+      throw new Error("No authentication token found");
+    }
+
+    const response = await api.get("/scan/me/summary", {
+      params: { range },
+    });
+
+    if (!response.data) {
+      throw new Error("Failed to fetch scan summary");
+    }
+
+    return response.data;
   },
 };
 
