@@ -76,6 +76,8 @@ export const scanApi = {
     );
 
     const data = await response.data;
+    console.log("This is the data", data);
+    
 
     if (!data) {
       throw new Error(data.message || "Failed to fetch events");

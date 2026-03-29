@@ -2,8 +2,8 @@ import {
   Image,
   StyleSheet,
   View,
-  FlatList,
   RefreshControl,
+  ScrollView,
 } from "react-native";
 import React, { useMemo, useCallback } from "react";
 import Colors from "@/constants/Colors";
@@ -65,13 +65,9 @@ const ScanItem = ({
 };
 
 const RecentScanState = () => {
-  const {
-    data: scanHistoryData,
-    isLoading: isLoadingScanHistory,
-    refetch: refetchScanHistory,
-  } = useScanHistory(null); // Pass null to get all events
+  const { data: scanHistoryData } = useScanHistory(null); // Pass null to get all events
 
-  // Get only the first 5 items
+  // Get only the first 3 items
   const scanHistoryItems = useMemo(() => {
     if (!scanHistoryData?.pages) return [];
     const allItems = scanHistoryData.pages.flatMap((page) => page.items);
@@ -79,22 +75,18 @@ const RecentScanState = () => {
   }, [scanHistoryData]);
 
   return (
-    <View>
-      <FlatList
-        data={scanHistoryItems}
-        keyExtractor={(item) => `${item.code}-${item.scannedAt}`}
-        renderItem={({ item }) => (
-          <ScanItem
-            code={item.code}
-            outcome={item.outcome}
-            scannedAt={item.scannedAt}
-            ticketName={item.ticket.ticketName}
-            bannerImage={item.event.bannerImage}
-          />
-        )}
-        showsVerticalScrollIndicator={false}
-      />
-    </View>
+    <ScrollView showsVerticalScrollIndicator={false}>
+      {scanHistoryItems.map((item) => (
+        <ScanItem
+          key={`${item.code}-${item.scannedAt}`}
+          code={item.code}
+          outcome={item.outcome}
+          scannedAt={item.scannedAt}
+          ticketName={item.ticket.ticketName}
+          bannerImage={item.event.bannerImage}
+        />
+      ))}
+    </ScrollView>
   );
 };
 
@@ -121,5 +113,4 @@ const styles = StyleSheet.create({
     color: "#888",
     marginTop: 2,
   },
-
 });

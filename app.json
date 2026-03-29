@@ -50,7 +50,8 @@
           "recordAudioAndroid": true
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": true
