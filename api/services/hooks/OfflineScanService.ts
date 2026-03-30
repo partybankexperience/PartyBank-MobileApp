@@ -142,9 +142,7 @@ class OfflineScanService {
       // Generate idempotency key (UUID format)
       const idempotencyKey = this.generateIdempotencyKey(eventId, ticketCode);
 
-      console.log(
-        `Generated idempotency key: ${idempotencyKey} for ticket ${ticketCode}`,
-      );
+    
 
       // Store scanned ticket
       await databaseService.addScannedTicket(

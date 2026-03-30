@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
 import {
   ScrollView,
   View,
@@ -18,9 +18,49 @@ import RecentScanState from "../component/datastate/RecentScanState";
 import { useScanHistory } from "@/api/services/hooks/useScanHistory";
 import PendingEventState from "../component/datastate/PendingEventState";
 import { usePendingEvents } from "@/api/services/hooks/usePendingEvent";
+import { useAuth } from "@/api/services/hooks/useAuth";
+import { User } from "@/api/services/type";
+import { tokenService } from "@/api/services/apiService";
 
 const App = () => {
   const [refreshing, setRefreshing] = useState(false);
+  const { getUser } = useAuth();
+  const [user, setUser] = useState<User | null>(null);
+
+  const getGreeting = useMemo(() => {
+    const currentHour = new Date().getHours();
+
+    if (currentHour >= 5 && currentHour < 12) {
+      return "Good morning";
+    } else if (currentHour >= 12 && currentHour < 17) {
+      return "Good afternoon";
+    } else if (currentHour >= 17 && currentHour < 21) {
+      return "Good evening";
+    } else {
+      return "Good night";
+    }
+  }, []);
+
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const userData = await getUser();
+        if (userData) {
+          setUser(userData);
+        } else {
+          const directUser = await tokenService.getUser();
+
+          if (directUser) {
+            setUser(directUser);
+          }
+        }
+      } catch (error) {
+        console.error("Error loading user:", error);
+      }
+    };
+
+    loadUser();
+  }, []);
 
   const {
     data: scanHistoryData,
@@ -66,9 +106,11 @@ const App = () => {
         {/* Header Section */}
         <View style={styles.header}>
           <View>
-            <CustomText variant="h5">Good morning,</CustomText>
+            <CustomText variant="h5" color={Colors.light.text2} bold>
+              {getGreeting},
+            </CustomText>
             <CustomText bold variant="h3">
-              Donald Jones
+              {user?.fullName || "User name not available"}
             </CustomText>
           </View>
           <View style={styles.headerIcons}>
@@ -110,7 +152,7 @@ const App = () => {
         {/* Pending Events Section */}
         <View style={styles.sectionHeader}>
           <CustomText bold>Pending Events</CustomText>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={()=> router.push('/profile')}>
             <CustomText color={Colors.light.primary} variant="h5">
               View All
             </CustomText>

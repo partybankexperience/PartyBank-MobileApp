@@ -37,7 +37,6 @@ const EventDetails = ({ event }: EventDetailsProps) => {
     });
   };
 
-  console.log("Event details", event);
 
   return (
     <View style={styles.container}>

@@ -110,16 +110,12 @@ const RecentScan = () => {
 
     // Log the selected event details
     if (value === "all") {
-      console.log("Selected: All Events - Fetching all scan history");
     } else {
       const selectedEventObj = eventsData?.pages
         ?.flatMap((page) => page.items)
         .find((event) => event.id === value);
 
-      console.log("Selected Event ID:", value);
-      console.log("Selected Event Name:", selectedEventObj?.name);
-      console.log("Selected Event Slug:", selectedEventObj?.slug);
-      console.log("Fetching scan history for this event");
+  
     }
   };
 

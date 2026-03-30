@@ -9,7 +9,6 @@ class SyncService {
     try {
       const isOnline = await networkService.checkConnectivity();
       if (!isOnline) {
-        console.log("Device is offline, cannot download event data");
         return false;
       }
 
@@ -17,9 +16,7 @@ class SyncService {
 
       if (response.status === 200 && response.data) {
         await databaseService.storeEventValidationData(eventId, response.data);
-        console.log(
-          `Successfully downloaded validation data for event ${eventId}`,
-        );
+      
         return true;
       }
 
@@ -37,13 +34,11 @@ class SyncService {
     errors?: any[];
   }> {
     if (this.isSyncing) {
-      console.log("Sync already in progress");
       return { success: false, syncedCount: 0, failedCount: 0 };
     }
 
     const isOnline = await networkService.checkConnectivity();
     if (!isOnline) {
-      console.log("Device is offline, cannot sync");
       return { success: false, syncedCount: 0, failedCount: 0 };
     }
 
@@ -53,7 +48,6 @@ class SyncService {
       const pendingScans = await databaseService.getPendingSyncScans();
 
       if (pendingScans.length === 0) {
-        console.log("No pending scans to sync");
         return { success: true, syncedCount: 0, failedCount: 0 };
       }
 
@@ -97,11 +91,7 @@ class SyncService {
             })),
           };
 
-          console.log(
-            `Syncing ${scans.length} scans for event ${eventId}`,
-            payload,
-          );
-
+       
           const response = await api.post("/scan/sync-scans", payload);
 
           if (response.status === 200 || response.status === 201) {
@@ -110,9 +100,7 @@ class SyncService {
               .filter((scan) => scan.eventId === eventId)
               .map((scan) => scan.id);
             syncedScanIds.push(...scanIds);
-            console.log(
-              `Successfully synced ${scans.length} scans for event ${eventId}`,
-            );
+         
           } else {
             failedCount += scans.length;
             errors.push({

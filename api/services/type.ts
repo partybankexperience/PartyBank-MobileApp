@@ -200,3 +200,13 @@ export interface ScanSummaryResponse {
   totalScanned: number;
   todayScanned: number;
 }
+
+export interface User {
+  id: string;
+  email: string;
+  fullName: string;
+  role: string;
+  isOnboardingComplete: boolean;
+  onboardingStep: string;
+  phoneNumber: string;
+}

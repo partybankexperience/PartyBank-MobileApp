@@ -383,9 +383,7 @@ export default function TabOneScreen() {
 
           result = await scanVerifyMutation.mutateAsync(requestData);
         } catch (error: any) {
-          console.log(
-            "Online verification failed, falling back to offline mode",
-          );
+          
           const offlineResult = await offlineScanService.processOfflineScan(
             selectedEvent.id,
             ticketCode,

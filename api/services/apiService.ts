@@ -76,8 +76,6 @@ export const scanApi = {
     );
 
     const data = await response.data;
-    console.log("This is the data", data);
-    
 
     if (!data) {
       throw new Error(data.message || "Failed to fetch events");
@@ -110,7 +108,6 @@ export const scanApi = {
     const response = await api.post("/scan/verify", request);
 
     const data = await response.data;
-    console.log("This is data", data);
 
     if (!response.data) {
       throw new Error(data.message || "Failed to verify scan");
@@ -203,22 +200,46 @@ export const tokenService = {
   setTokens: async (accessToken: string): Promise<void> => {
     await StorageService.setItem("accessToken", accessToken);
     await StorageService.setItem("tokenTimestamp", Date.now().toString());
-
-    // Verify token was stored
-    const storedToken = await StorageService.getItem("accessToken");
   },
 
   setRefreshTokens: async (refreshToken: string): Promise<void> => {
     await StorageService.setItem("refreshToken", refreshToken);
+  },
 
-    // Verify token was stored
-    const storedToken = await StorageService.getItem("refreshToken");
+  // Add this method - ensure it's properly implemented
+  setUser: async (user: any): Promise<void> => {
+    try {
+      const userString = JSON.stringify(user);
+      await StorageService.setItem("user", userString);
+
+      // Verify immediately
+      const saved = await StorageService.getItem("user");
+    } catch (error) {
+      console.error("Error storing user:", error);
+    }
+  },
+
+  // Add this method
+  getUser: async (): Promise<any | null> => {
+    try {
+      const userString = await StorageService.getItem("user");
+
+      if (userString) {
+        const user = JSON.parse(userString);
+        return user;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error getting user:", error);
+      return null;
+    }
   },
 
   clearTokens: async (): Promise<void> => {
     await StorageService.removeItem("accessToken");
     await StorageService.removeItem("tokenTimestamp");
     await StorageService.removeItem("refreshToken");
+    await StorageService.removeItem("user");
   },
 
   getAccessToken: async (): Promise<string | null> => {
@@ -229,7 +250,6 @@ export const tokenService = {
     return await StorageService.getItem("refreshToken");
   },
 
-  // Helper to check if we have a token
   hasValidToken: async (): Promise<boolean> => {
     const token = await StorageService.getItem("accessToken");
     const timestamp = await StorageService.getItem("tokenTimestamp");

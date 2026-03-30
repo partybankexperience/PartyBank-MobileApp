@@ -57,41 +57,33 @@ class DatabaseService {
             createdAt TEXT DEFAULT CURRENT_TIMESTAMP
           );
         `);
-        console.log("Created pending_sync_scans table");
       } else {
         // Add missing columns if they don't exist
         try {
           await this.db.execAsync(`
             ALTER TABLE pending_sync_scans ADD COLUMN deviceId TEXT;
           `);
-          console.log("Added deviceId column");
         } catch (error) {
           // Column might already exist
-          console.log("deviceId column already exists");
         }
 
         try {
           await this.db.execAsync(`
             ALTER TABLE pending_sync_scans ADD COLUMN idempotencyKey TEXT;
           `);
-          console.log("Added idempotencyKey column");
         } catch (error) {
           // Column might already exist
-          console.log("idempotencyKey column already exists");
         }
 
         try {
           await this.db.execAsync(`
             ALTER TABLE pending_sync_scans ADD COLUMN synced INTEGER DEFAULT 0;
           `);
-          console.log("Added synced column");
         } catch (error) {
           // Column might already exist
-          console.log("synced column already exists");
         }
       }
 
-      console.log("Database initialized successfully");
     } catch (error) {
       console.error("Error initializing database:", error);
     }
@@ -105,7 +97,6 @@ class DatabaseService {
          VALUES (?, ?, ?, ?)`,
         [eventId, JSON.stringify(data), data.lastUpdatedAt, data.total],
       );
-      console.log(`Stored validation data for event ${eventId}`);
       return true;
     } catch (error) {
       console.error("Error storing event validation data:", error);
@@ -167,7 +158,6 @@ class DatabaseService {
         [id, eventId, ticketCode, ticketId, status, scannedAt, 0],
       );
 
-      console.log(`Recorded scanned ticket ${ticketCode} for event ${eventId}`);
       return true;
     } catch (error) {
       console.error("Error adding scanned ticket:", error);
@@ -221,9 +211,7 @@ class DatabaseService {
         ],
       );
 
-      console.log(
-        `Added pending sync scan for ticket ${code} with deviceId ${deviceId}`,
-      );
+   
       return true;
     } catch (error) {
       console.error("Error adding pending sync scan:", error);
@@ -279,7 +267,6 @@ class DatabaseService {
         `DELETE FROM pending_sync_scans WHERE id IN (${placeholders})`,
         scanIds,
       );
-      console.log(`Deleted ${scanIds.length} synced scans`);
       return true;
     } catch (error) {
       console.error("Error deleting synced scans:", error);
@@ -295,7 +282,6 @@ class DatabaseService {
         `UPDATE pending_sync_scans SET synced = 1 WHERE id IN (${placeholders})`,
         scanIds,
       );
-      console.log(`Marked ${scanIds.length} scans as synced`);
       return true;
     } catch (error) {
       console.error("Error marking scans as synced:", error);
@@ -306,9 +292,9 @@ class DatabaseService {
   // Get count of pending scans (unsynced only)
   async getPendingScansCount(): Promise<number> {
     try {
-      const result = await this.db.getFirstAsync(
+      const result = (await this.db.getFirstAsync(
         `SELECT COUNT(*) as count FROM pending_sync_scans WHERE synced = 0`,
-      ) as { count: number } | undefined;
+      )) as { count: number } | undefined;
       return result?.count || 0;
     } catch (error) {
       console.error("Error getting pending scans count:", error);
@@ -321,7 +307,7 @@ class DatabaseService {
     try {
       const result = (await this.db.getFirstAsync(
         `SELECT COUNT(*) as count FROM pending_sync_scans`,
-      )) as { count: number } | undefined; 
+      )) as { count: number } | undefined;
       return result?.count || 0;
     } catch (error) {
       console.error("Error getting total scans count:", error);
@@ -336,7 +322,6 @@ class DatabaseService {
         `DELETE FROM event_validation_data WHERE eventId = ?`,
         [eventId],
       );
-      console.log(`Cleared validation data for event ${eventId}`);
       return true;
     } catch (error) {
       console.error("Error clearing event validation data:", error);
@@ -350,7 +335,6 @@ class DatabaseService {
       await this.db.runAsync(`DELETE FROM scanned_tickets WHERE eventId = ?`, [
         eventId,
       ]);
-      console.log(`Cleared scanned tickets for event ${eventId}`);
       return true;
     } catch (error) {
       console.error("Error clearing scanned tickets:", error);
@@ -365,7 +349,6 @@ class DatabaseService {
         `DELETE FROM pending_sync_scans WHERE eventId = ?`,
         [eventId],
       );
-      console.log(`Cleared pending scans for event ${eventId}`);
       return true;
     } catch (error) {
       console.error("Error clearing pending scans:", error);
@@ -376,10 +359,12 @@ class DatabaseService {
   // Clear all data (for testing/reset)
   async clearAllData(): Promise<boolean> {
     try {
-      await this.db.execAsync(`DELETE FROM event_validation_data`);
-      await this.db.execAsync(`DELETE FROM scanned_tickets`);
-      await this.db.execAsync(`DELETE FROM pending_sync_scans`);
-      console.log("All data cleared successfully");
+      // Run deletes sequentially, not as a batch exec
+      await this.db.runAsync("DELETE FROM event_validation_data");
+      await this.db.runAsync("DELETE FROM scanned_tickets");
+      await this.db.runAsync("DELETE FROM pending_sync_scans");
+
+
       return true;
     } catch (error) {
       console.error("Error clearing all data:", error);
@@ -393,7 +378,6 @@ class DatabaseService {
       await this.db.execAsync(`DROP TABLE IF EXISTS pending_sync_scans`);
       await this.db.execAsync(`DROP TABLE IF EXISTS scanned_tickets`);
       await this.db.execAsync(`DROP TABLE IF EXISTS event_validation_data`);
-      console.log("Database reset successfully");
       await this.initDatabase();
       return true;
     } catch (error) {

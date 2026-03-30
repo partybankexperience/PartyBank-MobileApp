@@ -21,33 +21,35 @@ export const useLogin = () => {
   return useMutation<LoginResponse, ApiError, LoginRequest>({
     mutationFn: authApi.login,
     onSuccess: async (data) => {
-      // Extract the accessToken from the response
-      
-      const { accessToken, refreshToken } = data;
+
+      const { accessToken, refreshToken, user } = data;
 
       if (!accessToken) {
         throw new Error("No access token received");
       }
 
-      // Store the token and timestamp
+      // Store tokens
       await tokenService.setTokens(accessToken);
+      await tokenService.setRefreshTokens(refreshToken);
 
-      // Store the refresh token
-      await tokenService.setRefreshTokens(refreshToken)
-      // Verify token was stored
-      const storedToken = await tokenService.getAccessToken();
+      // Store user data - THIS IS CRITICAL
+      if (user) {
+        await tokenService.setUser(user);
 
-      // Show success toast
+        // Verify it was stored
+        const storedUser = await tokenService.getUser();
+      } else {
+        console.error("No user data in login response!");
+      }
+
       showToast("Login successful!", "success");
-
-      // Invalidate any relevant queries
       queryClient.invalidateQueries({ queryKey: ["user"] });
 
-      // Navigate to main app after a brief delay
       setTimeout(() => {
         router.replace("/(mainapp)/(tabs)");
       }, 1500);
     },
+
     onError: (error: any) => {
       console.error("Login error details:", error);
 
@@ -85,7 +87,7 @@ export const useResetPasswordInitiate = () => {
     onSuccess: (data) => {
       showToast(
         data.message || "Password reset instructions sent to your email",
-        "success"
+        "success",
       );
     },
     onError: (error: any) => {
@@ -152,6 +154,10 @@ export const useAuth = () => {
     return await tokenService.getAccessToken();
   };
 
+  const getUser = async (): Promise<any | null> => {
+    return await tokenService.getUser();
+  };
+
   const logout = async (): Promise<void> => {
     await tokenService.clearTokens();
     router.replace("/login");
@@ -160,6 +166,7 @@ export const useAuth = () => {
   return {
     checkAuth,
     getToken,
+    getUser,
     logout,
   };
 };

@@ -1,6 +1,7 @@
 import EventIcon from "@/assets/svg/EventIcon";
 import HomeIcon from "@/assets/svg/HomeIcon";
 import NotificationIcon from "@/assets/svg/NotiIcon";
+import ProfileIcon from "@/assets/svg/ProfileIcon";
 import ScannerIcon from "@/assets/svg/ScannerIcon";
 import Colors from "@/constants/Colors";
 import { Tabs } from "expo-router";
@@ -55,11 +56,11 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
-          name="notification"
+          name="profile"
           options={{
-            title: "Notification",
+            title: "Profile",
 
-            tabBarIcon: ({ color }) => <NotificationIcon fill={color} />,
+            tabBarIcon: ({ color }) => <ProfileIcon fill={color} />,
           }}
         />
       </Tabs>
