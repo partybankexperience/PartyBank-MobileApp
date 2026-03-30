@@ -63,7 +63,7 @@ const Profile = () => {
   const handleLogout = async () => {
     Alert.alert(
       "Logout",
-      "Are you sure you want to logout? This will clear all locally stored scan data.",
+      "Are you sure you want to logout?",
       [
         { text: "Cancel", style: "cancel" },
         {

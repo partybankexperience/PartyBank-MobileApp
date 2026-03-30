@@ -73,10 +73,6 @@ export default function TabOneScreen() {
 
   // Handle sync function
   const handleSync = useCallback(async () => {
-    if (!isOnline) {
-      showToast("Cannot sync while offline", "error");
-      return;
-    }
 
     if (!selectedEvent) {
       showToast("Please select an event first", "error");
@@ -239,9 +235,7 @@ export default function TabOneScreen() {
       case "ok":
         return {
           isValid: true,
-          message: isOfflineMode
-            ? "Valid Ticket (Offline Mode)"
-            : "Valid Ticket",
+          message: isOfflineMode ? "Valid Ticket" : "Valid Ticket",
           display: (
             <View style={[styles.resultDisplay, { gap: 10 }]}>
               <View style={[styles.resultDetailRow]}>
@@ -253,9 +247,7 @@ export default function TabOneScreen() {
                   style={[styles.resultValue, styles.validText]}
                   bold={true}
                 >
-                  {isOfflineMode
-                    ? "Valid Ticket (Offline Mode)"
-                    : "Valid Ticket"}
+                  {isOfflineMode ? "Valid Ticket" : "Valid Ticket"}
                 </CustomText>
               </View>
               <Image
@@ -269,8 +261,8 @@ export default function TabOneScreen() {
                   centered={true}
                 >
                   {" "}
-                  Type: {resultData?.ticket?.ticketName || "Unknown"}(
-                  {resultData?.ticket?.ticketColor || "none"})
+                  Type: {resultData?.ticket?.ticketName}(
+                  {resultData?.ticket?.ticketColor})
                 </CustomText>
               </View>
             </View>

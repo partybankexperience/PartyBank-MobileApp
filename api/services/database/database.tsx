@@ -37,7 +37,7 @@ class DatabaseService {
       `);
 
       // Check if pending_sync_scans table exists
-      const tableExists = await this.db.getFirstAsync(
+      const tableExists = await this.db.getFirstAsync<{ name: string }>(
         "SELECT name FROM sqlite_master WHERE type='table' AND name='pending_sync_scans'",
       );
 
@@ -57,35 +57,80 @@ class DatabaseService {
             createdAt TEXT DEFAULT CURRENT_TIMESTAMP
           );
         `);
+        console.log("Created pending_sync_scans table");
       } else {
-        // Add missing columns if they don't exist
-        try {
-          await this.db.execAsync(`
-            ALTER TABLE pending_sync_scans ADD COLUMN deviceId TEXT;
-          `);
-        } catch (error) {
-          // Column might already exist
+        // Check and add missing columns
+        const tableInfo = await this.db.getAllAsync<{ name: string }>(
+          `PRAGMA table_info(pending_sync_scans)`,
+        );
+
+        const columnNames = tableInfo.map((col) => col.name);
+
+        if (!columnNames.includes("deviceId")) {
+          try {
+            await this.db.execAsync(
+              `ALTER TABLE pending_sync_scans ADD COLUMN deviceId TEXT;`,
+            );
+            console.log("Added deviceId column");
+          } catch (error) {
+            console.log("Could not add deviceId column:", error);
+          }
         }
 
-        try {
-          await this.db.execAsync(`
-            ALTER TABLE pending_sync_scans ADD COLUMN idempotencyKey TEXT;
-          `);
-        } catch (error) {
-          // Column might already exist
+        if (!columnNames.includes("idempotencyKey")) {
+          try {
+            await this.db.execAsync(
+              `ALTER TABLE pending_sync_scans ADD COLUMN idempotencyKey TEXT;`,
+            );
+            console.log("Added idempotencyKey column");
+          } catch (error) {
+            console.log("Could not add idempotencyKey column:", error);
+          }
         }
 
-        try {
-          await this.db.execAsync(`
-            ALTER TABLE pending_sync_scans ADD COLUMN synced INTEGER DEFAULT 0;
-          `);
-        } catch (error) {
-          // Column might already exist
+        if (!columnNames.includes("synced")) {
+          try {
+            await this.db.execAsync(
+              `ALTER TABLE pending_sync_scans ADD COLUMN synced INTEGER DEFAULT 0;`,
+            );
+            console.log("Added synced column");
+          } catch (error) {
+            console.log("Could not add synced column:", error);
+          }
         }
       }
 
+      console.log("Database initialized successfully");
     } catch (error) {
       console.error("Error initializing database:", error);
+    }
+  }
+
+  // Helper method to safely execute queries with error handling
+  private async safeQuery<T>(
+    query: string,
+    params: any[] = [],
+  ): Promise<T | null> {
+    try {
+      const result = await this.db.getFirstAsync<T>(query, params);
+      return result;
+    } catch (error) {
+      console.error(`Error executing query: ${query}`, error);
+      return null;
+    }
+  }
+
+  // Helper method to safely execute all queries
+  private async safeQueryAll<T>(
+    query: string,
+    params: any[] = [],
+  ): Promise<T[]> {
+    try {
+      const results = await this.db.getAllAsync<T>(query, params);
+      return results;
+    } catch (error) {
+      console.error(`Error executing query: ${query}`, error);
+      return [];
     }
   }
 
@@ -107,10 +152,10 @@ class DatabaseService {
   // Get event validation data
   async getEventValidationData(eventId: string): Promise<any | null> {
     try {
-      const result = (await this.db.getFirstAsync(
+      const result = await this.safeQuery<{ data: string }>(
         `SELECT * FROM event_validation_data WHERE eventId = ?`,
         [eventId],
-      )) as { data: string } | undefined;
+      );
       if (result) {
         return {
           ...result,
@@ -171,7 +216,7 @@ class DatabaseService {
     ticketCode: string,
   ): Promise<boolean> {
     try {
-      const result = await this.db.getFirstAsync(
+      const result = await this.safeQuery(
         `SELECT * FROM scanned_tickets WHERE eventId = ? AND ticketCode = ?`,
         [eventId, ticketCode],
       );
@@ -211,7 +256,6 @@ class DatabaseService {
         ],
       );
 
-   
       return true;
     } catch (error) {
       console.error("Error adding pending sync scan:", error);
@@ -222,7 +266,7 @@ class DatabaseService {
   // Get pending sync scans (only unsynced ones)
   async getPendingSyncScans(): Promise<any[]> {
     try {
-      const results = await this.db.getAllAsync(
+      const results = await this.safeQueryAll<any>(
         `SELECT * FROM pending_sync_scans WHERE synced = 0 ORDER BY createdAt ASC`,
       );
       return results;
@@ -235,7 +279,7 @@ class DatabaseService {
   // Get all pending sync scans (including synced - for debugging)
   async getAllPendingSyncScans(): Promise<any[]> {
     try {
-      const results = await this.db.getAllAsync(
+      const results = await this.safeQueryAll<any>(
         `SELECT * FROM pending_sync_scans ORDER BY createdAt ASC`,
       );
       return results;
@@ -248,7 +292,7 @@ class DatabaseService {
   // Get pending sync scans by event
   async getPendingSyncScansByEvent(eventId: string): Promise<any[]> {
     try {
-      const results = await this.db.getAllAsync(
+      const results = await this.safeQueryAll<any>(
         `SELECT * FROM pending_sync_scans WHERE eventId = ? AND synced = 0 ORDER BY createdAt ASC`,
         [eventId],
       );
@@ -262,6 +306,8 @@ class DatabaseService {
   // Delete synced scans
   async deleteSyncedScans(scanIds: string[]): Promise<boolean> {
     try {
+      if (scanIds.length === 0) return true;
+
       const placeholders = scanIds.map(() => "?").join(",");
       await this.db.runAsync(
         `DELETE FROM pending_sync_scans WHERE id IN (${placeholders})`,
@@ -277,6 +323,8 @@ class DatabaseService {
   // Mark specific scans as synced (alternative to delete)
   async markScansAsSynced(scanIds: string[]): Promise<boolean> {
     try {
+      if (scanIds.length === 0) return true;
+
       const placeholders = scanIds.map(() => "?").join(",");
       await this.db.runAsync(
         `UPDATE pending_sync_scans SET synced = 1 WHERE id IN (${placeholders})`,
@@ -292,9 +340,9 @@ class DatabaseService {
   // Get count of pending scans (unsynced only)
   async getPendingScansCount(): Promise<number> {
     try {
-      const result = (await this.db.getFirstAsync(
+      const result = await this.safeQuery<{ count: number }>(
         `SELECT COUNT(*) as count FROM pending_sync_scans WHERE synced = 0`,
-      )) as { count: number } | undefined;
+      );
       return result?.count || 0;
     } catch (error) {
       console.error("Error getting pending scans count:", error);
@@ -305,9 +353,9 @@ class DatabaseService {
   // Get total count of all scans (for debugging)
   async getTotalScansCount(): Promise<number> {
     try {
-      const result = (await this.db.getFirstAsync(
+      const result = await this.safeQuery<{ count: number }>(
         `SELECT COUNT(*) as count FROM pending_sync_scans`,
-      )) as { count: number } | undefined;
+      );
       return result?.count || 0;
     } catch (error) {
       console.error("Error getting total scans count:", error);
@@ -359,12 +407,9 @@ class DatabaseService {
   // Clear all data (for testing/reset)
   async clearAllData(): Promise<boolean> {
     try {
-      // Run deletes sequentially, not as a batch exec
       await this.db.runAsync("DELETE FROM event_validation_data");
       await this.db.runAsync("DELETE FROM scanned_tickets");
       await this.db.runAsync("DELETE FROM pending_sync_scans");
-
-
       return true;
     } catch (error) {
       console.error("Error clearing all data:", error);
@@ -394,18 +439,18 @@ class DatabaseService {
     syncedScansCount: number;
   }> {
     try {
-      const eventValidationDataCount = (await this.db.getFirstAsync(
+      const eventValidationDataCount = await this.safeQuery<{ count: number }>(
         `SELECT COUNT(*) as count FROM event_validation_data`,
-      )) as { count: number } | undefined;
-      const scannedTicketsCount = (await this.db.getFirstAsync(
+      );
+      const scannedTicketsCount = await this.safeQuery<{ count: number }>(
         `SELECT COUNT(*) as count FROM scanned_tickets`,
-      )) as { count: number } | undefined;
-      const pendingScansCount = (await this.db.getFirstAsync(
+      );
+      const pendingScansCount = await this.safeQuery<{ count: number }>(
         `SELECT COUNT(*) as count FROM pending_sync_scans WHERE synced = 0`,
-      )) as { count: number } | undefined;
-      const syncedScansCount = (await this.db.getFirstAsync(
+      );
+      const syncedScansCount = await this.safeQuery<{ count: number }>(
         `SELECT COUNT(*) as count FROM pending_sync_scans WHERE synced = 1`,
-      )) as { count: number } | undefined;
+      );
 
       return {
         eventValidationDataCount: eventValidationDataCount?.count || 0,
