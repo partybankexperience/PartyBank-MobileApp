@@ -158,3 +158,55 @@ export interface AcceptInviteResponse {
   roleAttached: string;
   acceptedAt: string;
 }
+
+export interface ScanHistoryItem {
+  code: string;
+  outcome: string;
+  method: string;
+  gate: string;
+  deviceId: string | null;
+  scannedAt: string;
+  event: {
+    id: string;
+    name: string;
+    bannerImage: string;
+  };
+  ticket: {
+    ticketId: string;
+    ticketName: string;
+    holder: string;
+    email: string;
+    ticketColor: string;
+  };
+}
+
+export interface ScanHistoryResponse {
+  items: ScanHistoryItem[];
+  page: number;
+  pageSize: number;
+  total: number;
+}
+export interface ScanItemProps {
+  code: string;
+  outcome: string;
+  gate?: string;
+  scannedAt: string;
+  ticketName: string;
+  holder: string;
+  bannerImage: string;
+}
+
+export interface ScanSummaryResponse {
+  totalScanned: number;
+  todayScanned: number;
+}
+
+export interface User {
+  id: string;
+  email: string;
+  fullName: string;
+  role: string;
+  isOnboardingComplete: boolean;
+  onboardingStep: string;
+  phoneNumber: string;
+}

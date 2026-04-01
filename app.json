@@ -2,7 +2,7 @@
   "expo": {
     "name": "Partybank",
     "slug": "PartyBank-MobileApp",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/icon/appicon.png",
     "scheme": "partybankmobileapp",
@@ -50,7 +50,8 @@
           "recordAudioAndroid": true
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": true

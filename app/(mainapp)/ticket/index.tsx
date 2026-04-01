@@ -20,7 +20,8 @@ import { useEventSummary } from "@/api/services/hooks/useEventSummary";
 import { TicketTypeCardProps } from "@/api/services/type";
 
 const TicketScanner = () => {
-  const { eventId } = useLocalSearchParams();
+  const { eventId, eventName, eventBanner, eventStartDate } =
+    useLocalSearchParams();
   const {
     data: eventSummary,
     isLoading,
@@ -30,10 +31,18 @@ const TicketScanner = () => {
     isRefetching,
   } = useEventSummary(eventId as string);
 
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <Topbar>Ticket Scanning</Topbar>
+        <Topbar showBack showProfileIcon={false}>Ticket Details</Topbar>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.light.primary} />
           <CustomText style={styles.loadingText}>
@@ -47,7 +56,8 @@ const TicketScanner = () => {
   if (isError) {
     return (
       <View style={styles.container}>
-        <Topbar>Ticket Scanning</Topbar>
+        <Topbar showBack showProfileIcon={false}>Ticket Details</Topbar>
+
         <View style={styles.errorContainer}>
           <CustomText style={styles.errorText}>
             {error?.message || "Failed to load event summary"}
@@ -65,7 +75,10 @@ const TicketScanner = () => {
 
   return (
     <View style={styles.container}>
-      <Topbar showBack>Ticket Scanning</Topbar>
+      <Topbar showBack showProfileIcon={false}>
+        Ticket Details
+      </Topbar>
+
       <ScrollView
         showsVerticalScrollIndicator={false}
         style={styles.scrollView}
@@ -78,6 +91,24 @@ const TicketScanner = () => {
           />
         }
       >
+        {/* Header */}
+        <View style={styles.eventHeader}>
+          <View>
+            <Image
+              source={{ uri: eventBanner as string }}
+              style={styles.eventImage}
+            />
+          </View>
+          <View style={styles.eventInfo}>
+            <CustomText bold={true} variant="h3">
+              {eventName as string}
+            </CustomText>
+            <CustomText variant="h6" color={Colors.light.text2}>
+              {formatDate(eventStartDate as string)}
+            </CustomText>
+          </View>
+        </View>
+
         {/* Banner Section */}
         <ImageBackground
           source={require("@/assets/images/banner.png")}
@@ -85,7 +116,7 @@ const TicketScanner = () => {
         >
           <View style={styles.bannerContent}>
             <CustomText color={Colors.light.white} bold={true} variant="h3">
-              Scanned Tickets
+              Total Scanned Tickets
             </CustomText>
             <CustomText color={Colors.light.white} bold={true} variant="h1">
               {totals.scanned}/
@@ -251,5 +282,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.light.primary,
     textDecorationLine: "underline",
+  },
+  eventHeader: {
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    backgroundColor: Colors.light.white,
+    borderRadius: 12,
+    flexDirection: "row",
+    gap: 12,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: Colors.light.grey,
+    marginBottom: 16,
+  },
+  eventImage: {
+    height: 57,
+    width: 57,
+    resizeMode: "cover",
+    borderRadius: 8,
+  },
+  eventInfo: {
+    flex: 1,
   },
 });

@@ -33,6 +33,7 @@ const SplashScreen = () => {
       try {
         const token = await getToken();
 
+        
         if (!token) {
           router.replace("/login");
         } else {

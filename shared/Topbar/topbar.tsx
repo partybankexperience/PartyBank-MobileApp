@@ -10,36 +10,41 @@ interface TopbarProps {
   showProfileIcon?: boolean;
 }
 
-const Topbar = ({ children, showBack = false, showProfileIcon = true }: TopbarProps) => {
+const Topbar = ({
+  children,
+  showBack = false,
+  showProfileIcon = true,
+}: TopbarProps) => {
   const router = useRouter();
 
   return (
     <View style={styles.header}>
-      {showBack && (
-        <Pressable
-          onPress={() => router.back()}
-          style={styles.backButton}
-          hitSlop={10}
-        >
-          <AntDesign name="arrow-left" size={22} color="#000" />
-        </Pressable>
-      )}
+      <View style={styles.leftContainer}>
+        {showBack && (
+          <Pressable
+            onPress={() => router.back()}
+            style={styles.backButton}
+            hitSlop={10}
+          >
+            <AntDesign name="arrow-left" size={22} color="#000" />
+          </Pressable>
+        )}
+        <CustomText bold style={styles.headingText}>
+          {children}
+        </CustomText>
+      </View>
 
-      <CustomText bold style={styles.headingText}>
-        {children}
-      </CustomText>
       {showProfileIcon && (
         <Pressable
           style={styles.rightContainer}
           onPress={() => router.push("/profile")}
         >
           <Image
-            source={require("@/assets/images/profile.png")}
+            source={require("@/assets/icon/noti.png")}
             style={styles.image}
           />
         </Pressable>
       )}
-      
     </View>
   );
 };
@@ -55,20 +60,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     backgroundColor: "#fff",
   },
-
+  leftContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
   backButton: {
     marginRight: 8,
   },
-
   headingText: {
     fontSize: 20,
     flexShrink: 1,
   },
-
   rightContainer: {
     alignItems: "flex-end",
   },
-
   image: {
     height: 30,
     width: 30,

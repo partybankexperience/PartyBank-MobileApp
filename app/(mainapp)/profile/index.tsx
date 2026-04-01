@@ -35,19 +35,16 @@ export default function Profile() {
       showToast(`No events found`, "warning");
       errorToastShownRef.current = true;
     }
-
-    // Reset the ref when we're no longer in error state
     if (!isError) {
       errorToastShownRef.current = false;
     }
   }, [isError]);
 
-  // Flatten all pages data into a single array
   const allEvents = data?.pages.flatMap((page) => page.items) || [];
 
   return (
     <View style={styles.container}>
-      <Topbar showBack={true}>Pending Event List</Topbar>
+      <Topbar showBack={true} showProfileIcon={false}>Pending Event List</Topbar>
       <FlatList
         data={allEvents}
         keyExtractor={(event) => event.id.toString()}
