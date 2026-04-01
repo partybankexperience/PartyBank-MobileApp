@@ -78,7 +78,6 @@ const refreshAccessToken = async (): Promise<string> => {
 
   await tokenService.setTokens(accessToken);
 
-  console.log("Token refreshed");
 
   return accessToken;
 };

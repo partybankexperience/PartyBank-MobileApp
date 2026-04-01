@@ -13,7 +13,6 @@ import {
   KeyboardAvoidingView,
   Keyboard,
   TouchableWithoutFeedback,
-  Dimensions,
   TextInput,
 } from "react-native";
 import { FontAwesome, MaterialIcons, Ionicons } from "@expo/vector-icons";
@@ -22,11 +21,20 @@ import Topbar from "@/shared/Topbar/topbar";
 import Colors from "@/constants/Colors";
 import { useScanVerify } from "@/api/services/hooks/useScan";
 import { useToast } from "@/shared/toast/ToastContext";
-import { EventDropdown } from "../component/event/EventDropdown";
 import { useFocusEffect } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { Inputfield } from "@/shared/inputfield";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  heightPercentageToDP as hp,
+  widthPercentageToDP as wp,
+} from "react-native-responsive-screen";
+import Button from "@/shared/button";
+import { syncService } from "@/api/services/hooks/SyncService";
+import { offlineScanService } from "@/api/services/hooks/OfflineScanService";
+import { networkService } from "@/api/services/network/NetworkService";
+import { databaseService } from "@/api/services/database/database";
+import { EventDropdown } from "../component/event/EventDropdown";
 
 export default function TabOneScreen() {
   const queryClient = useQueryClient();
@@ -35,6 +43,9 @@ export default function TabOneScreen() {
   const [scannedData, setScannedData] = useState("");
   const [isScanning, setIsScanning] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [isOnline, setIsOnline] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [pendingSyncCount, setPendingSyncCount] = useState(0);
   const [scanResult, setScanResult] = useState<{
     isValid: boolean;
     message: string;
@@ -59,6 +70,94 @@ export default function TabOneScreen() {
 
   const { showToast } = useToast();
   const scanVerifyMutation = useScanVerify();
+
+  // Handle sync function
+  const handleSync = useCallback(async () => {
+
+    if (!selectedEvent) {
+      showToast("Please select an event first", "error");
+      return;
+    }
+
+    setIsSyncing(true);
+    try {
+      showToast("Syncing data...", "info");
+      const result = await syncService.syncAll(selectedEvent.id);
+
+      if (result.validationData) {
+        showToast("Event data synced successfully", "success");
+      } else {
+        showToast("Failed to sync event data", "error");
+      }
+
+      if (result.pendingScans.syncedCount > 0) {
+        showToast(`Synced ${result.pendingScans.syncedCount} scans`, "success");
+        setPendingSyncCount(0);
+      } else if (result.pendingScans.failedCount > 0) {
+        showToast(
+          `Failed to sync ${result.pendingScans.failedCount} scans`,
+          "error",
+        );
+      } else if (
+        result.pendingScans.syncedCount === 0 &&
+        result.pendingScans.failedCount === 0
+      ) {
+        showToast("No pending scans to sync", "info");
+      }
+
+      // Refresh sync status
+      const status = await offlineScanService.getSyncStatus();
+      setPendingSyncCount(status.pendingCount);
+    } catch (error) {
+      console.error("Sync error:", error);
+      showToast("Failed to sync data", "error");
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [isOnline, selectedEvent, showToast]);
+
+  // Check network status
+  useEffect(() => {
+    const checkNetwork = async () => {
+      const online = await networkService.checkConnectivity();
+      setIsOnline(online);
+    };
+
+    checkNetwork();
+
+    // Subscribe to network changes
+    const unsubscribe = networkService.on(
+      "connectivityChange",
+      (online: boolean) => {
+        setIsOnline(online);
+        if (online && selectedEvent) {
+          // Auto-sync when coming online
+          handleSync();
+        }
+      },
+    );
+
+    // Cleanup subscription
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [selectedEvent, handleSync]);
+
+  // Update pending sync count
+  useEffect(() => {
+    const updatePendingCount = async () => {
+      const status = await offlineScanService.getSyncStatus();
+      setPendingSyncCount(status.pendingCount);
+    };
+
+    updatePendingCount();
+
+    // Refresh count periodically
+    const interval = setInterval(updatePendingCount, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -99,19 +198,44 @@ export default function TabOneScreen() {
     setHasCameraPermission(null);
   }, []);
 
-  const handleSelectEvent = (event: any) => {
+  const handleSelectEvent = async (event: any) => {
     setSelectedEvent(event);
     setScanResult(null);
     setScannedData("");
     setLastScannedCode("");
+
+    // Download event validation data for offline use
+    if (isOnline) {
+      showToast("Downloading event data for offline use...", "info");
+      const success = await syncService.downloadEventValidationData(event.id);
+      if (success) {
+        showToast("Event data downloaded successfully", "success");
+      } else {
+        showToast("Failed to download event data", "error");
+      }
+    } else {
+      // Check if we have offline data for this event
+      const offlineData = await databaseService.getEventValidationData(
+        event.id,
+      );
+      if (offlineData) {
+        showToast("Using offline event data", "info");
+      } else {
+        showToast("No offline data available for this event", "error");
+      }
+    }
   };
 
-  const getResultConfig = (outcome: string, resultData?: any) => {
+  const getResultConfig = (
+    outcome: string,
+    resultData?: any,
+    isOfflineMode: boolean = false,
+  ) => {
     switch (outcome) {
       case "ok":
         return {
           isValid: true,
-          message: "Valid Ticket",
+          message: isOfflineMode ? "Valid Ticket" : "Valid Ticket",
           display: (
             <View style={[styles.resultDisplay, { gap: 10 }]}>
               <View style={[styles.resultDetailRow]}>
@@ -123,7 +247,7 @@ export default function TabOneScreen() {
                   style={[styles.resultValue, styles.validText]}
                   bold={true}
                 >
-                  Valid Ticket
+                  {isOfflineMode ? "Valid Ticket" : "Valid Ticket"}
                 </CustomText>
               </View>
               <Image
@@ -137,8 +261,8 @@ export default function TabOneScreen() {
                   centered={true}
                 >
                   {" "}
-                  Type: {resultData?.ticket?.ticketName || "Unknown"}(
-                  {resultData?.ticket?.ticketColor || "none"})
+                  Type: {resultData?.ticket?.ticketName}(
+                  {resultData?.ticket?.ticketColor})
                 </CustomText>
               </View>
             </View>
@@ -232,16 +356,84 @@ export default function TabOneScreen() {
         };
       }
 
-      const requestData = {
-        eventId: selectedEvent.id,
-        code: parsedData.ticketCode || scannedData,
-        method: "qr" as const,
-        timestamp: new Date().toISOString(),
-        signature: parsedData.signature || "manual_scan_no_signature",
-      };
+      const ticketCode = parsedData.ticketCode || scannedData;
 
-      const result = await scanVerifyMutation.mutateAsync(requestData);
-      const resultConfig = getResultConfig(result.outcome, result);
+      let result;
+      let isOfflineMode = false;
+
+      // Check if online
+      if (isOnline) {
+        // Online mode - use normal endpoint
+        try {
+          const requestData = {
+            eventId: selectedEvent.id,
+            code: ticketCode,
+            method: "qr" as const,
+            timestamp: new Date().toISOString(),
+            signature: parsedData.signature || "manual_scan_no_signature",
+          };
+
+          result = await scanVerifyMutation.mutateAsync(requestData);
+        } catch (error: any) {
+          
+          const offlineResult = await offlineScanService.processOfflineScan(
+            selectedEvent.id,
+            ticketCode,
+            "qr",
+            "Gate A",
+          );
+
+          if (offlineResult.success) {
+            result = {
+              outcome: "ok",
+              ticket: {
+                ticketName:
+                  offlineResult.data?.ticketInfo?.ticketName || "Unknown",
+                ticketColor: "offline",
+              },
+            };
+            isOfflineMode = true;
+
+            // Update pending sync count after offline scan
+            const status = await offlineScanService.getSyncStatus();
+            setPendingSyncCount(status.pendingCount);
+          } else {
+            throw new Error(offlineResult.message);
+          }
+        }
+      } else {
+        // Offline mode - use local validation
+        const offlineResult = await offlineScanService.processOfflineScan(
+          selectedEvent.id,
+          ticketCode,
+          "qr",
+          "Gate A",
+        );
+
+        if (offlineResult.success) {
+          result = {
+            outcome: "ok",
+            ticket: {
+              ticketName:
+                offlineResult.data?.ticketInfo?.ticketName || "Unknown",
+              ticketColor: "offline",
+            },
+          };
+          isOfflineMode = true;
+
+          // Update pending sync count after offline scan
+          const status = await offlineScanService.getSyncStatus();
+          setPendingSyncCount(status.pendingCount);
+        } else {
+          throw new Error(offlineResult.message);
+        }
+      }
+
+      const resultConfig = getResultConfig(
+        result.outcome,
+        result,
+        isOfflineMode,
+      );
 
       setScanResult({
         isValid: resultConfig.isValid,
@@ -256,16 +448,13 @@ export default function TabOneScreen() {
     } catch (error: any) {
       console.error("Verification error:", error);
 
-      const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        "Failed to verify ticket";
+      const errorMessage = error.message || "Failed to verify ticket";
 
       const resultConfig = getResultConfig("invalid");
 
       setScanResult({
         isValid: false,
-        message: resultConfig.message,
+        message: errorMessage,
         display: resultConfig.display,
         toastType: resultConfig.toastType,
         icon: resultConfig.icon,
@@ -287,14 +476,12 @@ export default function TabOneScreen() {
       if (status === "granted") {
         setHasCameraPermission(true);
         setShowPermissionUI(false);
-        // Start scanning after permission is granted
         setIsScanning(true);
         setIsCameraReady(false);
       } else {
         setHasCameraPermission(false);
 
         if (!canAskAgain) {
-          // Guide user to app settings
           Alert.alert(
             "Permission Required",
             "Camera permission has been permanently denied. Please enable it in your device settings.",
@@ -323,13 +510,11 @@ export default function TabOneScreen() {
   };
 
   const startScanning = async () => {
-    // Check if event is selected before proceeding
     if (!selectedEvent) {
       showToast("Please select an event first", "error");
       return;
     }
 
-    // Request camera permission ONLY when user taps the button
     if (hasCameraPermission === null) {
       await handleRequestPermission();
       return;
@@ -340,7 +525,6 @@ export default function TabOneScreen() {
       return;
     }
 
-    // If we have permission, start scanning
     if (hasCameraPermission === true) {
       setIsScanning(true);
       setIsCameraReady(false);
@@ -376,12 +560,10 @@ export default function TabOneScreen() {
     [isCameraReady],
   );
 
-  // Handle camera ready event
   const handleCameraReady = useCallback(() => {
     setIsCameraReady(true);
   }, []);
 
-  // Handle camera mount error
   const handleCameraMountError = useCallback((error: any) => {
     console.error("Camera mount error:", error);
     Alert.alert(
@@ -393,40 +575,6 @@ export default function TabOneScreen() {
     setIsCameraReady(false);
     setShowPermissionUI(false);
   }, []);
-
-  // Handle iPad-specific camera issues
-  const handleCameraError = useCallback(
-    (error: any) => {
-      console.error("Camera error:", error);
-
-      if (Platform.OS === "ios") {
-        Alert.alert(
-          "Camera Unavailable",
-          "The camera is currently unavailable. Please try again or check if another app is using the camera.",
-          [
-            { text: "Cancel", style: "cancel" },
-            {
-              text: "Try Again",
-              onPress: () => {
-                setIsScanning(false);
-                setShowPermissionUI(false);
-                setTimeout(() => {
-                  if (hasCameraPermission) {
-                    setIsScanning(true);
-                  }
-                }, 500);
-              },
-            },
-          ],
-        );
-      }
-
-      setIsScanning(false);
-      setIsCameraReady(false);
-      setShowPermissionUI(false);
-    },
-    [hasCameraPermission],
-  );
 
   const handleManualVerification = async () => {
     if (!selectedEvent) {
@@ -442,20 +590,25 @@ export default function TabOneScreen() {
     if (isVerifying) return;
 
     await verifyScannedCode(manualCode.trim());
-    setManualCode(""); // Clear the input after verification
+    setManualCode("");
   };
 
   const handleInputFocus = () => {
-    // For Android, we need a longer delay and different scrolling approach
     setTimeout(
       () => {
         if (scrollViewRef.current) {
-          // Scroll to the input's position
           scrollViewRef.current.scrollToEnd({ animated: true });
         }
       },
       Platform.OS === "android" ? 300 : 100,
     );
+  };
+
+  // Determine which sync icon to show based on pending scans
+  const getSyncIcon = () => {
+    return pendingSyncCount > 0
+      ? require("@/assets/icon/sync2.png")
+      : require("@/assets/icon/sync.png");
   };
 
   return (
@@ -478,15 +631,56 @@ export default function TabOneScreen() {
             <View style={{ paddingHorizontal: 16, flex: 1 }}>
               <View style={{ marginBottom: 20, width: "100%" }}>
                 <CustomText style={styles.label}>Select Event</CustomText>
-                <EventDropdown
-                  selectedEvent={selectedEvent}
-                  onSelectEvent={handleSelectEvent}
-                  placeholder="Select an event"
-                />
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 10,
+                  }}
+                >
+                  <View style={{ flex: 1 }}>
+                    <EventDropdown
+                      selectedEvent={selectedEvent}
+                      onSelectEvent={handleSelectEvent}
+                      placeholder="Select an event"
+                    />
+                  </View>
+                  <TouchableOpacity onPress={handleSync} disabled={isSyncing}>
+                    <Image source={getSyncIcon()} style={styles.scannerImage} />
+                    {pendingSyncCount > 0 && (
+                      <View style={styles.badge}>
+                        <CustomText style={styles.badgeText}>
+                          {pendingSyncCount}
+                        </CustomText>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                </View>
+
+                {/* Network Status Indicator */}
+                <View style={styles.networkStatus}>
+                  <View
+                    style={[
+                      styles.statusDot,
+                      { backgroundColor: isOnline ? "#28A745" : "#E53935" },
+                    ]}
+                  />
+                  <CustomText variant="caption" style={styles.statusText}>
+                    {isOnline
+                      ? "Online Mode"
+                      : `Offline Mode${pendingSyncCount > 0 ? ` (${pendingSyncCount} pending syncs)` : ""}`}
+                  </CustomText>
+                  {isSyncing && (
+                    <ActivityIndicator
+                      size="small"
+                      color={Colors.light.primary}
+                      style={styles.syncIndicator}
+                    />
+                  )}
+                </View>
               </View>
 
               <View style={styles.scanContainer}>
-                {/* Camera Permission Denied UI - Shows only when needed */}
                 {showPermissionUI ? (
                   <View style={styles.permissionDeniedContainer}>
                     <MaterialIcons
@@ -591,11 +785,11 @@ export default function TabOneScreen() {
                         value={manualCode}
                         onChangeText={setManualCode}
                         onFocus={handleInputFocus}
-                        style={{ width: "95%" }}
+                        style={{ width: "90%" }}
                       />
                     </View>
-                    <TouchableOpacity
-                      style={[
+                    <Button
+                      buttonStyle={[
                         styles.manualVerifyButton,
                         (!manualCode.trim() || isVerifying) &&
                           styles.disabledButton,
@@ -609,13 +803,11 @@ export default function TabOneScreen() {
                           color={Colors.light.white}
                         />
                       ) : (
-                        <Ionicons
-                          name="checkmark-circle"
-                          size={24}
-                          color={Colors.light.white}
-                        />
+                        <CustomText color={Colors.light.white} variant="h5">
+                          Validate Code
+                        </CustomText>
                       )}
-                    </TouchableOpacity>
+                    </Button>
                   </View>
                 </View>
 
@@ -846,43 +1038,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
   },
-  // Result Display Styles
   resultWrapper: {
     width: "100%",
     marginTop: 20,
   },
   resultContainer: {
     backgroundColor: Colors.light.grey100,
-    // borderRadius: 12,
     paddingVertical: 10,
     justifyContent: "center",
     alignItems: "center",
   },
-  resultHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-
-    // marginBottom: 15,
-  },
-  resultIcon: {
-    marginRight: 12,
-  },
-  resultMessage: {
-    fontSize: 18,
-    fontWeight: "bold",
-    flex: 1,
-  },
-  validMessage: {
-    color: Colors.light.green,
-  },
-  errorMessage: {
-    color: Colors.light.primary,
-  },
   resultDetails: {
     marginTop: 10,
   },
-  // Display Component Styles
   resultDisplay: {
     width: "100%",
   },
@@ -898,45 +1066,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 18,
   },
-  resultLabel: {
-    fontSize: 14,
-    color: Colors.light.text2,
-    flex: 1,
-  },
   resultValue: {
     fontSize: 14,
     fontWeight: "500",
     color: Colors.light.text,
-    // flex: 1,
-    // textAlign: "right",
   },
   validText: {
     color: Colors.light.green,
-    // fontWeight: "bold",
-  },
-  warningText: {
-    color: Colors.light.primary,
-    fontWeight: "bold",
   },
   errorText: {
     color: Colors.light.primary,
-    // fontWeight: "bold",
-  },
-  successBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: Colors.light.green,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginTop: 15,
-    alignSelf: "flex-start",
-  },
-  successBadgeText: {
-    color: Colors.light.white,
-    fontSize: 12,
-    fontWeight: "600",
-    marginLeft: 6,
   },
   infoBadge: {
     flexDirection: "row",
@@ -945,54 +1084,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
-    // marginTop: 15,
-    // alignSelf: "flex-start",
   },
   infoBadgeText: {
     color: Colors.light.white,
     fontSize: 12,
     fontWeight: "600",
     marginLeft: 6,
-  },
-  errorTips: {
-    marginTop: 15,
-    paddingLeft: 10,
-  },
-  tipItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  tipText: {
-    fontSize: 13,
-    color: Colors.light.text2,
-    marginLeft: 8,
-    flex: 1,
-  },
-  detailsButton: {
-    marginTop: 15,
-    paddingVertical: 8,
-    alignItems: "center",
-  },
-  detailsButtonText: {
-    color: Colors.light.primary,
-    fontSize: 14,
-    fontWeight: "500",
-    textDecorationLine: "underline",
-  },
-  permissionText: {
-    fontSize: 16,
-    color: Colors.light.baseblack,
-    textAlign: "center",
-    lineHeight: 24,
-    marginTop: 10,
-  },
-  permissionHint: {
-    marginTop: 10,
-    fontSize: 14,
-    color: Colors.light.baseblack,
-    textAlign: "center",
-    fontStyle: "italic",
   },
   actionButton: {
     backgroundColor: Colors.light.primary,
@@ -1030,11 +1127,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     width: "100%",
   },
-
   manualVerifyButton: {
     backgroundColor: Colors.light.primary,
-    width: 50,
-    height: 50,
+    width: 120,
+    height: 45,
     borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
@@ -1042,19 +1138,44 @@ const styles = StyleSheet.create({
   inputFieldContainer: {
     flex: 1,
   },
-  inputContainer: {
-    width: "100%",
-    margin: 0,
-    padding: 0,
+  scannerImage: {
+    height: hp("6%"),
+    width: wp("15%"),
+    resizeMode: "contain",
   },
-  manualInput: {
-    backgroundColor: Colors.light.grey100,
+  badge: {
+    position: "absolute",
+    top: -5,
+    right: -5,
+    backgroundColor: Colors.light.primary,
     borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: Platform.OS === "ios" ? 12 : 8,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: Colors.light.grey,
-    width: "100%",
+    minWidth: 20,
+    height: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 4,
+  },
+  badgeText: {
+    color: Colors.light.white,
+    fontSize: 10,
+    fontWeight: "bold",
+  },
+  networkStatus: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 8,
+    gap: 8,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  statusText: {
+    color: Colors.light.text2,
+    fontSize: 12,
+  },
+  syncIndicator: {
+    marginLeft: 8,
   },
 });
