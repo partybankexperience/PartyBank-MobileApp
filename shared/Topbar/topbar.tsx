@@ -37,7 +37,7 @@ const Topbar = ({
       {showProfileIcon && (
         <Pressable
           style={styles.rightContainer}
-          onPress={() => router.push("/profile")}
+          // onPress={() => router.push("/profile")}
         >
           <Image
             source={require("@/assets/icon/noti.png")}
@@ -76,8 +76,8 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
   },
   image: {
-    height: 30,
-    width: 30,
+    height: 40,
+    width: 40,
     resizeMode: "contain",
   },
 });
