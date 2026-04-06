@@ -1,27 +1,12 @@
-import {
-  Image,
-  StyleSheet,
-  View,
-  RefreshControl,
-  ScrollView,
-} from "react-native";
+import { Image, StyleSheet, View, ScrollView } from "react-native";
 import React, { useMemo, useCallback } from "react";
-import Colors from "@/constants/Colors";
 import {
   heightPercentageToDP as hp,
   widthPercentageToDP as wp,
 } from "react-native-responsive-screen";
 import CustomText from "@/shared/text/CustomText";
 import { useScanHistory } from "@/api/services/hooks/useScanHistory";
-import { formatDistanceToNow } from "date-fns";
-
-interface ScanItemProps {
-  code: string;
-  outcome: string;
-  scannedAt: string;
-  ticketName: string;
-  bannerImage: string;
-}
+import { ScanItemProps } from "@/api/services/type";
 
 const ScanItem = ({
   code,
@@ -30,10 +15,22 @@ const ScanItem = ({
   ticketName,
   bannerImage,
 }: ScanItemProps) => {
-  const isValid = outcome === "ok";
-  const formattedTime = formatDistanceToNow(new Date(scannedAt), {
-    addSuffix: true,
-  });
+  // Format the scannedAt date
+  const formattedDate = new Date(scannedAt).toLocaleString();
+
+  // Determine status text and color based on outcome
+  const getStatusInfo = () => {
+    switch (outcome) {
+      case "ok":
+        return { text: "Valid", color: "#28A745" };
+      case "already_scanned":
+        return { text: "Scanned Already", color: "#FF9800" };
+      default:
+        return { text: "Invalid", color: "#E53935" };
+    }
+  };
+
+  const statusInfo = getStatusInfo();
 
   return (
     <View style={styles.scanContainer}>
@@ -51,13 +48,13 @@ const ScanItem = ({
         <CustomText
           bold
           variant="caption"
-          style={[{ color: isValid ? "#28A745" : "#E53935" }]}
+          style={[{ color: statusInfo.color }]}
         >
-          {isValid ? "VALID" : "INVALID"}
+          {statusInfo.text}
         </CustomText>
 
         <CustomText variant="caption" style={styles.time}>
-          {formattedTime}
+          {formattedDate}
         </CustomText>
       </View>
     </View>
@@ -65,9 +62,8 @@ const ScanItem = ({
 };
 
 const RecentScanState = () => {
-  const { data: scanHistoryData } = useScanHistory(null); // Pass null to get all events
+  const { data: scanHistoryData } = useScanHistory(null);
 
-  // Get only the first 3 items
   const scanHistoryItems = useMemo(() => {
     if (!scanHistoryData?.pages) return [];
     const allItems = scanHistoryData.pages.flatMap((page) => page.items);
@@ -76,14 +72,15 @@ const RecentScanState = () => {
 
   return (
     <ScrollView showsVerticalScrollIndicator={false}>
-      {scanHistoryItems.map((item) => (
+      {scanHistoryItems.map((item, index) => (
         <ScanItem
-          key={`${item.code}-${item.scannedAt}`}
+          key={`${item.event.id}-${item.code}-${index}`}
           code={item.code}
           outcome={item.outcome}
           scannedAt={item.scannedAt}
           ticketName={item.ticket.ticketName}
           bannerImage={item.event.bannerImage}
+          holder={""}
         />
       ))}
     </ScrollView>
