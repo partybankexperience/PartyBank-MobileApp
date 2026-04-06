@@ -8,21 +8,31 @@ interface TopbarProps {
   children?: React.ReactNode;
   showBack?: boolean;
   showProfileIcon?: boolean;
+  onBackPress?: () => void;
 }
 
 const Topbar = ({
   children,
   showBack = false,
   showProfileIcon = true,
+  onBackPress,
 }: TopbarProps) => {
   const router = useRouter();
+
+  const handleBack = () => {
+    if (onBackPress) {
+      onBackPress();
+    } else {
+      router.back();
+    }
+  };
 
   return (
     <View style={styles.header}>
       <View style={styles.leftContainer}>
         {showBack && (
           <Pressable
-            onPress={() => router.back()}
+            onPress={handleBack}
             style={styles.backButton}
             hitSlop={10}
           >
@@ -39,10 +49,10 @@ const Topbar = ({
           style={styles.rightContainer}
           // onPress={() => router.push("/profile")}
         >
-          <Image
+          {/* <Image
             source={require("@/assets/icon/noti.png")}
             style={styles.image}
-          />
+          /> */}
         </Pressable>
       )}
     </View>

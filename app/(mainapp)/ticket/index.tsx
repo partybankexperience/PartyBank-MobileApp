@@ -15,7 +15,7 @@ import {
 } from "react-native-responsive-screen";
 import CustomText from "@/shared/text/CustomText";
 import Colors from "@/constants/Colors";
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useEventSummary } from "@/api/services/hooks/useEventSummary";
 import { TicketTypeCardProps } from "@/api/services/type";
 
@@ -31,6 +31,10 @@ const TicketScanner = () => {
     isRefetching,
   } = useEventSummary(eventId as string);
 
+  const handleBack = () => {
+    router.push("/event");
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
@@ -42,7 +46,9 @@ const TicketScanner = () => {
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <Topbar showBack showProfileIcon={false}>Ticket Details</Topbar>
+        <Topbar showBack showProfileIcon={false} onBackPress={handleBack}>
+          Ticket Details
+        </Topbar>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.light.primary} />
           <CustomText style={styles.loadingText}>
@@ -56,7 +62,9 @@ const TicketScanner = () => {
   if (isError) {
     return (
       <View style={styles.container}>
-        <Topbar showBack showProfileIcon={false}>Ticket Details</Topbar>
+        <Topbar showBack showProfileIcon={false} onBackPress={handleBack}>
+          Ticket Details
+        </Topbar>
 
         <View style={styles.errorContainer}>
           <CustomText style={styles.errorText}>
@@ -75,7 +83,7 @@ const TicketScanner = () => {
 
   return (
     <View style={styles.container}>
-      <Topbar showBack showProfileIcon={false}>
+      <Topbar showBack showProfileIcon={false} onBackPress={handleBack}>
         Ticket Details
       </Topbar>
 

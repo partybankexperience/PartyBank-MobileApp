@@ -121,11 +121,11 @@ export default ScannedCard;
 const styles = StyleSheet.create({
   background: {
     width: "100%",
-    height: hp("20%"),
+    height: hp("16%"),
     resizeMode: "cover",
     borderRadius: 16,
     overflow: "hidden",
-    paddingVertical: hp("4%"),
+    paddingVertical: hp("2%"),
   },
   bannerContent: {
     marginHorizontal: wp("3%"),

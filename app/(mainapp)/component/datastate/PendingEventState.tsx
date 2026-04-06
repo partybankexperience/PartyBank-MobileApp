@@ -1,7 +1,5 @@
 import { StyleSheet, View, FlatList, ActivityIndicator } from "react-native";
 import React from "react";
-import CustomText from "@/shared/text/CustomText";
-import Colors from "@/constants/Colors";
 import { usePendingEvents } from "@/api/services/hooks/usePendingEvent";
 import PendingEventDetails from "../event/PendingEvent";
 

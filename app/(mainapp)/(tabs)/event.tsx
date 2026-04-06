@@ -16,10 +16,11 @@ import { useToast } from "@/shared/toast/ToastContext";
 
 export default function EventTab() {
   const [activeTab, setActiveTab] = useState<"ACTIVE" | "UPCOMING" | "PAST">(
-    "ACTIVE"
+    "ACTIVE",
   );
   const { showToast } = useToast();
   const errorToastShownRef = useRef(false);
+  const hasSetInitialTabRef = useRef(false);
 
   const {
     data,
@@ -31,22 +32,6 @@ export default function EventTab() {
     error,
     refetch,
   } = useEvents();
-
-  useEffect(() => {
-    if (isError && !errorToastShownRef.current) {
-      showToast(`No events found`, "warning");
-      errorToastShownRef.current = true;
-    }
-
-    // Reset the ref when we're no longer in error state
-    if (!isError) {
-      errorToastShownRef.current = false;
-    }
-  }, [isError]);
-
-  const handleTabChange = (tab: "ACTIVE" | "UPCOMING" | "PAST") => {
-    setActiveTab(tab);
-  };
 
   // Flatten all pages data into a single array
   const allEvents = data?.pages.flatMap((page) => page.items) || [];
@@ -65,6 +50,60 @@ export default function EventTab() {
         return true;
     }
   });
+
+  // Function to count events by status
+  const getEventCountByStatus = () => {
+    const counts = {
+      ACTIVE: 0,
+      UPCOMING: 0,
+      PAST: 0,
+    };
+
+    allEvents.forEach((event) => {
+      const status = event.timingStatus?.toLowerCase();
+      if (status === "active") counts.ACTIVE++;
+      else if (status === "upcoming") counts.UPCOMING++;
+      else if (status === "past") counts.PAST++;
+    });
+
+    return counts;
+  };
+
+  // Set initial tab based on which status has data (Active → Upcoming → Past)
+  useEffect(() => {
+    if (!isLoading && allEvents.length > 0 && !hasSetInitialTabRef.current) {
+      const counts = getEventCountByStatus();
+
+      if (counts.ACTIVE > 0) {
+        setActiveTab("ACTIVE");
+      } else if (counts.UPCOMING > 0) {
+        setActiveTab("UPCOMING");
+      } else if (counts.PAST > 0) {
+        setActiveTab("PAST");
+      }
+
+      hasSetInitialTabRef.current = true;
+    }
+  }, [isLoading, allEvents]);
+
+  useEffect(() => {
+    if (isError && !errorToastShownRef.current) {
+      showToast(`No events found`, "warning");
+      errorToastShownRef.current = true;
+    }
+
+    // Reset the ref when we're no longer in error state
+    if (!isError) {
+      errorToastShownRef.current = false;
+    }
+  }, [isError]);
+
+  const handleTabChange = (tab: "ACTIVE" | "UPCOMING" | "PAST") => {
+    setActiveTab(tab);
+  };
+
+  // Get counts for display (optional - to show numbers on tabs)
+  const counts = getEventCountByStatus();
 
   return (
     <View style={styles.container}>
@@ -101,6 +140,7 @@ export default function EventTab() {
                 Upcoming
               </CustomText>
             </TouchableOpacity>
+
             <TouchableOpacity
               style={[styles.tab, activeTab === "PAST" && styles.activeTab]}
               onPress={() => handleTabChange("PAST")}

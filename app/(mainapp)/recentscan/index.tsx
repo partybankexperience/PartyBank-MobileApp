@@ -22,10 +22,20 @@ const ScanItem = ({
   ticketName,
   bannerImage,
 }: ScanItemProps) => {
-  const isValid = outcome === "ok";
-  const formattedTime = formatDistanceToNow(new Date(scannedAt), {
-    addSuffix: true,
-  });
+  const formattedDate = new Date(scannedAt).toLocaleString();
+
+  const getStatusInfo = () => {
+    switch (outcome) {
+      case "ok":
+        return { text: "Valid", color: "#28A745" };
+      case "already_scanned":
+        return { text: "Scanned Already", color: "#FF9800" };
+      default:
+        return { text: "Invalid", color: "#E53935" };
+    }
+  };
+
+  const statusInfo = getStatusInfo();
 
   return (
     <View style={styles.scanContainer}>
@@ -39,21 +49,19 @@ const ScanItem = ({
         <CustomText numberOfLines={1}>{code}</CustomText>
         <CustomText
           bold
-          variant="h5"
-          style={[{ color: isValid ? "#28A745" : "#E53935" }]}
+          variant="caption"
+          style={[{ color: statusInfo.color }]}
         >
-          {isValid ? "VALID" : "INVALID"}
+          {statusInfo.text}
         </CustomText>
 
-        <CustomText variant="h6">{formattedTime}</CustomText>
+        <CustomText variant="h6">{formattedDate}</CustomText>
       </View>
     </View>
   );
 };
 
-/* =========================
-   SCREEN
-========================= */
+
 const RecentScan = () => {
   const [selectedEvent, setSelectedEvent] = useState<string>("all");
 
@@ -114,8 +122,6 @@ const RecentScan = () => {
       const selectedEventObj = eventsData?.pages
         ?.flatMap((page) => page.items)
         .find((event) => event.id === value);
-
-  
     }
   };
 
@@ -217,7 +223,7 @@ const RecentScan = () => {
         ) : (
           <FlatList
             data={scanHistoryItems}
-            keyExtractor={(item) => `${item.code}-${item.scannedAt}`}
+            keyExtractor={(item, index) => `${item.event.id}-${item.code}-${index}`}
             renderItem={({ item }) => (
               <ScanItem
                 code={item.code}

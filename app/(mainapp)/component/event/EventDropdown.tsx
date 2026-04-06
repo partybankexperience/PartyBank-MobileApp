@@ -9,7 +9,7 @@ import {
   RefreshControl,
   Platform,
 } from "react-native";
-import { AntDesign } from "@expo/vector-icons";
+import { AntDesign, Entypo, MaterialIcons } from "@expo/vector-icons";
 import CustomText from "@/shared/text/CustomText";
 import Colors from "@/constants/Colors";
 import { useEvents } from "@/api/services/hooks/useEvents";
@@ -45,7 +45,6 @@ export const EventDropdown: React.FC<EventDropdownProps> = ({
     error,
     refetch,
   } = useEvents();
-
 
   // Flatten all events from all pages
   const allEvents = data?.pages.flatMap((page) => page.items) || [];
@@ -119,7 +118,7 @@ export const EventDropdown: React.FC<EventDropdownProps> = ({
           {selectedEvent?.name ||
             (isLoading ? "Loading events..." : placeholder)}
         </CustomText>
-        <AntDesign name="down" size={20} color="#333" />
+        <Entypo name="chevron-thin-down" size={20} color="black" />
       </TouchableOpacity>
 
       <Modal
