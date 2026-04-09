@@ -7,6 +7,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { ToastProvider } from "@/shared/toast/ToastContext";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import Colors from "@/constants/Colors";
 
 const queryClient = new QueryClient();
 
@@ -34,7 +35,8 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: Colors.light.baseblack }}>
+
       <StatusBar style="dark" backgroundColor="#fff" />
       <QueryClientProvider client={queryClient}>
         <ToastProvider>
