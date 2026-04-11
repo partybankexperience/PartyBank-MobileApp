@@ -79,6 +79,10 @@ export interface EventSummary {
     unscanned: number;
   };
   byTicket: TicketSummary[];
+  scanStats: {
+    invalid: number;
+    valid: number
+  };
 }
 
 export interface TicketSummary {

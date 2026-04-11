@@ -18,6 +18,7 @@ import Colors from "@/constants/Colors";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEventSummary } from "@/api/services/hooks/useEventSummary";
 import { TicketTypeCardProps } from "@/api/services/type";
+import { Entypo, Ionicons } from "@expo/vector-icons";
 
 const TicketScanner = () => {
   const { eventId, eventName, eventBanner, eventStartDate } =
@@ -43,11 +44,12 @@ const TicketScanner = () => {
       day: "numeric",
     });
   };
+
   if (isLoading) {
     return (
       <View style={styles.container}>
         <Topbar showBack showProfileIcon={false} onBackPress={handleBack}>
-          Ticket Details
+          Event Check-in
         </Topbar>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.light.primary} />
@@ -63,9 +65,8 @@ const TicketScanner = () => {
     return (
       <View style={styles.container}>
         <Topbar showBack showProfileIcon={false} onBackPress={handleBack}>
-          Ticket Details
+          Event Check-in
         </Topbar>
-
         <View style={styles.errorContainer}>
           <CustomText style={styles.errorText}>
             {error?.message || "Failed to load event summary"}
@@ -80,11 +81,12 @@ const TicketScanner = () => {
 
   const totals = eventSummary?.totals || { sold: 0, scanned: 0, unscanned: 0 };
   const ticketTypes = eventSummary?.byTicket || [];
+  const scanStats = eventSummary?.scanStats || { valid: 0, invalid: 0 };
 
   return (
     <View style={styles.container}>
       <Topbar showBack showProfileIcon={false} onBackPress={handleBack}>
-        Ticket Details
+        Event Check-in
       </Topbar>
 
       <ScrollView
@@ -118,18 +120,24 @@ const TicketScanner = () => {
         </View>
 
         {/* Banner Section */}
-        <ImageBackground
-          source={require("@/assets/images/banner.png")}
-          style={styles.background}
-        >
+        <View style={styles.background}>
           <View style={styles.bannerContent}>
-            <CustomText color={Colors.light.white} bold={true} variant="h3">
-              Total Scanned Tickets
-            </CustomText>
-            <CustomText color={Colors.light.white} bold={true} variant="h1">
+            <View>
+              <CustomText
+                color={Colors.light.baseblack}
+                medium={true}
+                variant="h3"
+              >
+                CHECK-IN PROGRESS
+              </CustomText>
+              <CustomText color={Colors.light.baseblack} variant="h6">
+                Check-in status for this event
+              </CustomText>
+            </View>
+            <CustomText color={Colors.light.baseblack} bold={true} variant="h1">
               {totals.scanned}/
               <CustomText
-                color={Colors.light.white}
+                color={Colors.light.baseblack}
                 extrabold={true}
                 variant="h1"
               >
@@ -137,27 +145,66 @@ const TicketScanner = () => {
               </CustomText>
             </CustomText>
           </View>
-          <View style={styles.scannerImageContainer}>
+          <View style={styles.ticketSpiralContainer}>
             <Image
-              source={require("@/assets/images/scanner.png")}
-              style={styles.scannerImage}
+              source={require("@/assets/images/spiral2.png")}
+              style={styles.ticketSpiralImage}
             />
           </View>
-          <View style={styles.spiralImageContainer}>
-            <Image
-              source={require("@/assets/images/spiral.png")}
-              style={styles.spiralImage}
-            />
-          </View>
-        </ImageBackground>
+        </View>
 
-        <View style={styles.ticketTypesHeader}>
-          <CustomText bold={true} variant="h3">
-            Ticket Types
+        {/* Ticket types */}
+        <View style={styles.yourScansHeader}>
+          <CustomText bold variant="h3">
+            Your Scans
           </CustomText>
         </View>
 
-        <View style={styles.ticketGrid}>
+        <View style={styles.scanStatsRow}>
+          <View style={styles.validCard}>
+            <View style={styles.scanStatInner}>
+              <View>
+                <CustomText bold variant="h1" color={Colors.light.deepgreen}>
+                  {scanStats.valid}
+                </CustomText>
+                <CustomText medium variant="h3" color={Colors.light.deepgreen}>
+                  Valid
+                </CustomText>
+              </View>
+              <Ionicons
+                name="checkmark-circle"
+                size={24}
+                color={Colors.light.deepgreen}
+              />
+            </View>
+          </View>
+
+          <View style={styles.invalidCard}>
+            <View style={styles.scanStatInner}>
+              <View>
+                <CustomText bold variant="h1" color={Colors.light.deepred}>
+                  {scanStats.invalid}
+                </CustomText>
+                <CustomText medium variant="h3" color={Colors.light.deepred}>
+                  Invalid
+                </CustomText>
+              </View>
+              <Entypo
+                name="circle-with-cross"
+                size={24}
+                color={Colors.light.deepred}
+              />
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.ticketTypesHeader}>
+          <CustomText bold={true} variant="h3">
+            Ticket
+          </CustomText>
+        </View>
+
+        <View>
           {ticketTypes.map((ticket) => (
             <TicketTypeCard
               key={ticket.ticketId}
@@ -181,18 +228,12 @@ const TicketTypeCard: React.FC<TicketTypeCardProps> = ({
     <CustomText bold={true} variant="h3">
       {title}
     </CustomText>
-    <CustomText bold={true} variant="h2" color={Colors.light.primary}>
+    <CustomText bold={true} variant="h2">
       {scanned}
       <CustomText extrabold={true} variant="h2">
         /{total}
       </CustomText>
     </CustomText>
-    <View style={styles.ticketSpiralContainer}>
-      <Image
-        source={require("@/assets/images/spiral2.png")}
-        style={styles.ticketSpiralImage}
-      />
-    </View>
   </View>
 );
 
@@ -214,46 +255,48 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: "hidden",
     paddingVertical: hp("4%"),
+    backgroundColor: Colors.light.grey100,
   },
   bannerContent: {
     marginHorizontal: wp("3%"),
-    gap: hp("4%"),
+    gap: hp("2%"),
   },
-  scannerImageContainer: {
-    position: "absolute",
-    right: 0,
-    bottom: 0,
+  yourScansHeader: {
+    marginTop: hp("3%"),
   },
-  scannerImage: {
-    height: hp("14%"),
-    width: wp("30%"),
-    resizeMode: "contain",
-  },
-  spiralImageContainer: {
-    position: "absolute",
-    left: 0,
-    top: 0,
-  },
-  spiralImage: {
-    height: hp("18%"),
-    width: wp("40%"),
-  },
-  ticketTypesHeader: {
-    paddingVertical: hp("3%"),
-  },
-  ticketGrid: {
+  scanStatsRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: wp("3%"),
+    justifyContent: "space-between",
+    marginTop: hp("1%"),
+  },
+  validCard: {
+    backgroundColor: Colors.light.lightgreen,
+    padding: hp("2%"),
+    borderRadius: 12,
+    width: wp("45%"),
+  },
+  invalidCard: {
+    backgroundColor: Colors.light.lightred,
+    padding: hp("2%"),
+    borderRadius: 12,
+    width: wp("45%"),
+  },
+  scanStatInner: {
+    flexDirection: "row",
     justifyContent: "space-between",
   },
+  ticketTypesHeader: {
+    paddingTop: hp("3%"),
+    paddingBottom: hp("1.5%"),
+  },
   ticketCard: {
-    backgroundColor: Colors.light.grey100,
-    padding: wp("3%"),
-    borderRadius: 12,
-    gap: hp("3%"),
-    width: wp("45%"),
+    flexDirection: "row",
     marginBottom: hp("2%"),
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderBottomWidth: 1,
+    borderColor: Colors.light.text2,
+    paddingBottom: hp("1%"),
   },
   ticketSpiralContainer: {
     position: "absolute",
@@ -261,8 +304,8 @@ const styles = StyleSheet.create({
     top: 0,
   },
   ticketSpiralImage: {
-    height: hp("6%"),
-    width: wp("12%"),
+    height: hp("11%"),
+    width: wp("39%"),
   },
   loadingContainer: {
     flex: 1,
@@ -305,7 +348,7 @@ const styles = StyleSheet.create({
   },
   eventImage: {
     height: 57,
-    width: 57,
+    width: 97,
     resizeMode: "cover",
     borderRadius: 8,
   },
