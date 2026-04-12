@@ -120,24 +120,18 @@ const TicketScanner = () => {
         </View>
 
         {/* Banner Section */}
-        <View style={styles.background}>
+        <ImageBackground
+          source={require("@/assets/images/banner.png")}
+          style={styles.background}
+        >
           <View style={styles.bannerContent}>
-            <View>
-              <CustomText
-                color={Colors.light.baseblack}
-                medium={true}
-                variant="h3"
-              >
-                CHECK-IN PROGRESS
-              </CustomText>
-              <CustomText color={Colors.light.baseblack} variant="h6">
-                Check-in status for this event
-              </CustomText>
-            </View>
-            <CustomText color={Colors.light.baseblack} bold={true} variant="h1">
+            <CustomText color={Colors.light.white} bold={true} variant="h3">
+              Total Scanned Tickets
+            </CustomText>
+            <CustomText color={Colors.light.white} bold={true} variant="h1">
               {totals.scanned}/
               <CustomText
-                color={Colors.light.baseblack}
+                color={Colors.light.white}
                 extrabold={true}
                 variant="h1"
               >
@@ -145,13 +139,19 @@ const TicketScanner = () => {
               </CustomText>
             </CustomText>
           </View>
-          <View style={styles.ticketSpiralContainer}>
+          <View style={styles.scannerImageContainer}>
             <Image
-              source={require("@/assets/images/spiral2.png")}
-              style={styles.ticketSpiralImage}
+              source={require("@/assets/images/scanner.png")}
+              style={styles.scannerImage}
             />
           </View>
-        </View>
+          <View style={styles.spiralImageContainer}>
+            <Image
+              source={require("@/assets/images/spiral.png")}
+              style={styles.spiralImage}
+            />
+          </View>
+        </ImageBackground>
 
         {/* Ticket types */}
         <View style={styles.yourScansHeader}>
@@ -204,7 +204,7 @@ const TicketScanner = () => {
           </CustomText>
         </View>
 
-        <View>
+        <View style={styles.ticketGrid}>
           {ticketTypes.map((ticket) => (
             <TicketTypeCard
               key={ticket.ticketId}
@@ -228,12 +228,18 @@ const TicketTypeCard: React.FC<TicketTypeCardProps> = ({
     <CustomText bold={true} variant="h3">
       {title}
     </CustomText>
-    <CustomText bold={true} variant="h2">
+    <CustomText bold={true} variant="h2" color={Colors.light.primary}>
       {scanned}
       <CustomText extrabold={true} variant="h2">
         /{total}
       </CustomText>
     </CustomText>
+    <View style={styles.ticketSpiralContainer}>
+      <Image
+        source={require("@/assets/images/spiral2.png")}
+        style={styles.ticketSpiralImage}
+      />
+    </View>
   </View>
 );
 
@@ -261,6 +267,25 @@ const styles = StyleSheet.create({
     marginHorizontal: wp("3%"),
     gap: hp("2%"),
   },
+  scannerImageContainer: {
+    position: "absolute",
+    right: 0,
+    bottom: 0,
+  },
+  scannerImage: {
+    height: hp("14%"),
+    width: wp("30%"),
+    resizeMode: "contain",
+  },
+  spiralImageContainer: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+  },
+  spiralImage: {
+    height: hp("18%"),
+    width: wp("40%"),
+  },
   yourScansHeader: {
     marginTop: hp("3%"),
   },
@@ -285,18 +310,23 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
   },
+  ticketGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: wp("3%"),
+    justifyContent: "space-between",
+  },
   ticketTypesHeader: {
     paddingTop: hp("3%"),
     paddingBottom: hp("1.5%"),
   },
   ticketCard: {
-    flexDirection: "row",
+    backgroundColor: Colors.light.grey100,
+    padding: wp("3%"),
+    borderRadius: 12,
+    gap: hp("3%"),
+    width: wp("45%"),
     marginBottom: hp("2%"),
-    justifyContent: "space-between",
-    alignItems: "center",
-    borderBottomWidth: 1,
-    borderColor: Colors.light.text2,
-    paddingBottom: hp("1%"),
   },
   ticketSpiralContainer: {
     position: "absolute",
@@ -304,8 +334,8 @@ const styles = StyleSheet.create({
     top: 0,
   },
   ticketSpiralImage: {
-    height: hp("11%"),
-    width: wp("39%"),
+    height: hp("6%"),
+    width: wp("19%"),
   },
   loadingContainer: {
     flex: 1,
