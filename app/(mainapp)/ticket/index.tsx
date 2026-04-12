@@ -200,7 +200,7 @@ const TicketScanner = () => {
 
         <View style={styles.ticketTypesHeader}>
           <CustomText bold={true} variant="h3">
-            Ticket
+            Ticket Breakdown
           </CustomText>
         </View>
 
