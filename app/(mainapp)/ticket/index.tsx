@@ -49,7 +49,7 @@ const TicketScanner = () => {
     return (
       <View style={styles.container}>
         <Topbar showBack showProfileIcon={false} onBackPress={handleBack}>
-          Event Check-in
+          <CustomText bold variant="h4">{eventName as string}</CustomText>
         </Topbar>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.light.primary} />
@@ -65,7 +65,7 @@ const TicketScanner = () => {
     return (
       <View style={styles.container}>
         <Topbar showBack showProfileIcon={false} onBackPress={handleBack}>
-          Event Check-in
+          <CustomText bold variant="h4">{eventName as string}</CustomText>
         </Topbar>
         <View style={styles.errorContainer}>
           <CustomText style={styles.errorText}>
@@ -86,7 +86,7 @@ const TicketScanner = () => {
   return (
     <View style={styles.container}>
       <Topbar showBack showProfileIcon={false} onBackPress={handleBack}>
-        Event Check-in
+        <CustomText bold variant="h4">{eventName as string}</CustomText>
       </Topbar>
 
       <ScrollView
@@ -101,23 +101,7 @@ const TicketScanner = () => {
           />
         }
       >
-        {/* Header */}
-        <View style={styles.eventHeader}>
-          <View>
-            <Image
-              source={{ uri: eventBanner as string }}
-              style={styles.eventImage}
-            />
-          </View>
-          <View style={styles.eventInfo}>
-            <CustomText bold={true} variant="h3">
-              {eventName as string}
-            </CustomText>
-            <CustomText variant="h6" color={Colors.light.text2}>
-              {formatDate(eventStartDate as string)}
-            </CustomText>
-          </View>
-        </View>
+        
 
         {/* Banner Section */}
         <ImageBackground
@@ -126,7 +110,7 @@ const TicketScanner = () => {
         >
           <View style={styles.bannerContent}>
             <CustomText color={Colors.light.white} bold={true} variant="h3">
-              Total Scanned Tickets
+              Check-in Progress
             </CustomText>
             <CustomText color={Colors.light.white} bold={true} variant="h1">
               {totals.scanned}/
